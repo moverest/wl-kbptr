@@ -17,6 +17,7 @@ executable(
   'wl-kbptr',
   [
     'src/main.c',
+    'src/surface-buffer.c',
     protos_src,
   ],
   dependencies: [

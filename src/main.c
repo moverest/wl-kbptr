@@ -1,5 +1,6 @@
 #include "log.h"
 #include "state.h"
+#include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #include <string.h>
@@ -82,6 +83,10 @@ int main() {
         LOG_ERR("Failed to get Wayland seat object.");
         return 1;
     }
+
+    surface_buffer_pool_init(&state.surface_buffer_pool);
+
+    surface_buffer_pool_destroy(&state.surface_buffer_pool);
 
     wl_seat_destroy(state.wl_seat);
     zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
