@@ -10,6 +10,7 @@ cc = meson.get_compiler('c')
 
 wayland_client = dependency('wayland-client')
 wayland_protos = dependency('wayland-protocols')
+xkbcommon = dependency('xkbcommon')
 
 subdir('protocol')
 
@@ -22,6 +23,7 @@ executable(
   ],
   dependencies: [
     wayland_client,
+    xkbcommon,
   ],
   install: true,
 )

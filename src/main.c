@@ -4,10 +4,111 @@
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
+#include <xkbcommon/xkbcommon.h>
 
 static void noop() {}
+
+static void handle_keyboard_keymap(
+    void *data, struct wl_keyboard *keyboard, uint32_t format, int fd,
+    uint32_t size
+) {
+    struct state *state = data;
+    if (state->xkb_state != NULL) {
+        xkb_state_unref(state->xkb_state);
+        state->xkb_state = NULL;
+    }
+    if (state->xkb_keymap != NULL) {
+        xkb_keymap_unref(state->xkb_keymap);
+        state->xkb_keymap = NULL;
+    }
+
+    switch (format) {
+    case WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP:
+        state->xkb_keymap = xkb_keymap_new_from_names(
+            state->xkb_context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS
+        );
+        break;
+
+    case WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1:;
+        void *buffer = mmap(NULL, size - 1, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (buffer == MAP_FAILED) {
+            LOG_ERR("Could not mmap keymap data.");
+            return;
+        }
+
+        state->xkb_keymap = xkb_keymap_new_from_buffer(
+            state->xkb_context, buffer, size - 1, XKB_KEYMAP_FORMAT_TEXT_V1,
+            XKB_KEYMAP_COMPILE_NO_FLAGS
+        );
+
+        munmap(buffer, size - 1);
+        close(fd);
+        break;
+    }
+
+    state->xkb_state = xkb_state_new(state->xkb_keymap);
+}
+
+static void handle_keyboard_key(
+    void *data, struct wl_keyboard *keyboard, uint32_t serial, uint32_t time,
+    uint32_t key, uint32_t key_state
+) {
+    struct state       *state = data;
+    char                buffer[64];
+    const xkb_keycode_t key_code = key + 8;
+    const xkb_keysym_t  key_sym =
+        xkb_state_key_get_one_sym(state->xkb_state, key_code);
+
+    if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        switch (key_sym) {
+        case XKB_KEY_Escape:
+            state->running = false;
+            break;
+        }
+    }
+}
+
+static void handle_keyboard_modifiers(
+    void *data, struct wl_keyboard *keyboard, uint32_t serial,
+    uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
+    uint32_t group
+) {
+    struct state *state = data;
+    xkb_state_update_mask(
+        state->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group
+    );
+}
+
+static const struct wl_keyboard_listener wl_keyboard_listener = {
+    .keymap      = handle_keyboard_keymap,
+    .enter       = noop,
+    .leave       = noop,
+    .key         = handle_keyboard_key,
+    .modifiers   = handle_keyboard_modifiers,
+    .repeat_info = noop,
+};
+
+static void handle_seat_capabilities(
+    void *data, struct wl_seat *wl_seat, uint32_t capabilities
+) {
+    struct state *state = data;
+    if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
+        state->wl_keyboard = wl_seat_get_keyboard(wl_seat);
+        wl_keyboard_add_listener(
+            state->wl_keyboard, &wl_keyboard_listener, data
+        );
+    }
+}
+
+const struct wl_seat_listener wl_seat_listener = {
+    .name         = noop,
+    .capabilities = handle_seat_capabilities,
+};
 
 static void handle_registry_global(
     void *data, struct wl_registry *registry, uint32_t name,
@@ -89,6 +190,9 @@ int main() {
         .wl_layer_shell   = NULL,
         .wl_surface       = NULL,
         .wl_layer_surface = NULL,
+        .xkb_context      = NULL,
+        .xkb_keymap       = NULL,
+        .xkb_state        = NULL,
         .running          = true,
     };
 
@@ -101,6 +205,12 @@ int main() {
     state.wl_registry = wl_display_get_registry(state.wl_display);
     if (state.wl_registry == NULL) {
         LOG_ERR("Failed to get Wayland registry.");
+        return 1;
+    }
+
+    state.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+    if (state.xkb_context == NULL) {
+        LOG_ERR("Could not create XKB context.");
         return 1;
     }
 
@@ -143,6 +253,9 @@ int main() {
                                     ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
                                     ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
     );
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        state.wl_layer_surface, true
+    );
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
@@ -151,12 +264,24 @@ int main() {
 
     surface_buffer_pool_destroy(&state.surface_buffer_pool);
 
+    if (state.wl_keyboard != NULL) {
+        wl_keyboard_destroy(state.wl_keyboard);
+    }
+
+    if (state.xkb_state != NULL) {
+        xkb_state_unref(state.xkb_state);
+    }
+    if (state.xkb_keymap != NULL) {
+        xkb_keymap_unref(state.xkb_keymap);
+    }
     wl_seat_destroy(state.wl_seat);
+
     zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
     wl_shm_destroy(state.wl_shm);
     wl_compositor_destroy(state.wl_compositor);
     wl_registry_destroy(state.wl_registry);
     wl_display_disconnect(state.wl_display);
+    xkb_context_unref(state.xkb_context);
 
     return 0;
 }
