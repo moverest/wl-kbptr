@@ -38,15 +38,58 @@ const struct wl_registry_listener wl_registry_listener = {
     .global_remove = noop,
 };
 
+static void send_frame(struct state *state) {
+    struct surface_buffer *surface_buffer = get_next_buffer(
+        state->wl_shm, &state->surface_buffer_pool, state->output_width,
+        state->output_height
+    );
+    if (surface_buffer == NULL) {
+        return;
+    }
+    surface_buffer->state = SURFACE_BUFFER_BUSY;
+
+    wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
+    wl_surface_damage(
+        state->wl_surface, 0, 0, state->output_width, state->output_height
+    );
+    wl_surface_commit(state->wl_surface);
+}
+
+static void handle_layer_surface_configure(
+    void *data, struct zwlr_layer_surface_v1 *layer_surface, uint32_t serial,
+    uint32_t width, uint32_t height
+) {
+    struct state *state  = data;
+    state->output_width  = width;
+    state->output_height = height;
+    zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
+    send_frame(state);
+}
+
+static void handle_layer_surface_closed(
+    void *data, struct zwlr_layer_surface_v1 *layer_surface
+) {
+    struct state *state = data;
+    state->running      = false;
+}
+
+const struct zwlr_layer_surface_v1_listener wl_layer_surface_listener = {
+    .configure = handle_layer_surface_configure,
+    .closed    = handle_layer_surface_closed,
+};
+
 int main() {
     struct state state = {
-        .wl_display     = NULL,
-        .wl_registry    = NULL,
-        .wl_compositor  = NULL,
-        .wl_shm         = NULL,
-        .wl_seat        = NULL,
-        .wl_keyboard    = NULL,
-        .wl_layer_shell = NULL,
+        .wl_display       = NULL,
+        .wl_registry      = NULL,
+        .wl_compositor    = NULL,
+        .wl_shm           = NULL,
+        .wl_seat          = NULL,
+        .wl_keyboard      = NULL,
+        .wl_layer_shell   = NULL,
+        .wl_surface       = NULL,
+        .wl_layer_surface = NULL,
+        .running          = true,
     };
 
     state.wl_display = wl_display_connect(NULL);
@@ -85,6 +128,26 @@ int main() {
     }
 
     surface_buffer_pool_init(&state.surface_buffer_pool);
+
+    state.wl_surface       = wl_compositor_create_surface(state.wl_compositor);
+    state.wl_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+        state.wl_layer_shell, state.wl_surface, NULL,
+        ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "wl-kbptr"
+    );
+    zwlr_layer_surface_v1_add_listener(
+        state.wl_layer_surface, &wl_layer_surface_listener, &state
+    );
+    zwlr_layer_surface_v1_set_anchor(
+        state.wl_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
+                                    ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
+                                    ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+                                    ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
+    );
+    wl_surface_commit(state.wl_surface);
+    while (state.running && wl_display_dispatch(state.wl_display)) {}
+
+    wl_surface_destroy(state.wl_surface);
+    zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
 
     surface_buffer_pool_destroy(&state.surface_buffer_pool);
 
