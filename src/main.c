@@ -3,6 +3,7 @@
 #include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
+#include <cairo/cairo.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -148,6 +149,12 @@ static void send_frame(struct state *state) {
         return;
     }
     surface_buffer->state = SURFACE_BUFFER_BUSY;
+
+    cairo_t *cairo = surface_buffer->cairo;
+    cairo_identity_matrix(cairo);
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cairo, .5, 0, 0, .1);
+    cairo_paint(cairo);
 
     wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
     wl_surface_damage(

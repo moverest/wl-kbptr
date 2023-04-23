@@ -1,6 +1,7 @@
 #ifndef __SURFACE_BUFFER_H_INCLUDED__
 #define __SURFACE_BUFFER_H_INCLUDED__
 
+#include <cairo/cairo.h>
 #include <wayland-client.h>
 
 enum surface_buffer_state {
@@ -15,6 +16,8 @@ enum surface_buffer_state {
 struct surface_buffer {
     enum surface_buffer_state state;
     struct wl_buffer         *wl_buffer;
+    cairo_surface_t          *cairo_surface;
+    cairo_t                  *cairo;
     void                     *data;
     size_t                    data_size;
     uint32_t                  width;

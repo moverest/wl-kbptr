@@ -2,12 +2,15 @@
 
 #include "log.h"
 
+#include <cairo/cairo.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#define CAIRO_SURFACE_FORMAT CAIRO_FORMAT_ARGB32
 
 static int create_shm_file(void) {
     char name[] = "/tmp/wl-shm-XXXXXX";
@@ -48,7 +51,8 @@ static struct surface_buffer *surface_buffer_init(
     struct wl_shm *wl_shm, struct surface_buffer *buffer, int32_t width,
     int32_t height
 ) {
-    const uint32_t stride    = width * 4;
+    const uint32_t stride =
+        cairo_format_stride_for_width(CAIRO_SURFACE_FORMAT, width);
     const uint32_t data_size = height * stride;
     void          *data;
 
@@ -79,12 +83,25 @@ static struct surface_buffer *surface_buffer_init(
     buffer->height    = height;
     buffer->state     = SURFACE_BUFFER_READY;
 
+    buffer->cairo_surface = cairo_image_surface_create_for_data(
+        buffer->data, CAIRO_SURFACE_FORMAT, width, height, stride
+    );
+    buffer->cairo = cairo_create(buffer->cairo_surface);
+
     return buffer;
 }
 
 static void surface_buffer_destroy(struct surface_buffer *buffer) {
     if (buffer->state == SURFACE_BUFFER_UNITIALIZED) {
         return;
+    }
+
+    if (buffer->cairo) {
+        cairo_destroy(buffer->cairo);
+    }
+
+    if (buffer->cairo_surface) {
+        cairo_surface_destroy(buffer->cairo_surface);
     }
 
     if (buffer->wl_buffer) {

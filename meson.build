@@ -11,6 +11,7 @@ cc = meson.get_compiler('c')
 wayland_client = dependency('wayland-client')
 wayland_protos = dependency('wayland-protocols')
 xkbcommon = dependency('xkbcommon')
+cairo = dependency('cairo')
 
 subdir('protocol')
 
@@ -24,6 +25,7 @@ executable(
   dependencies: [
     wayland_client,
     xkbcommon,
+    cairo,
   ],
   install: true,
 )
