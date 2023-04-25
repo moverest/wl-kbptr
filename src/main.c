@@ -1,9 +1,11 @@
 #include "log.h"
+#include "mode.h"
 #include "state.h"
 #include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #include <cairo/cairo.h>
+#include <math.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -11,6 +13,27 @@
 #include <wayland-client.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
+
+static void send_frame(struct state *state) {
+    struct surface_buffer *surface_buffer = get_next_buffer(
+        state->wl_shm, &state->surface_buffer_pool, state->output_width,
+        state->output_height
+    );
+    if (surface_buffer == NULL) {
+        return;
+    }
+    surface_buffer->state = SURFACE_BUFFER_BUSY;
+
+    cairo_t *cairo = surface_buffer->cairo;
+    cairo_identity_matrix(cairo);
+    state->mode->render(state, cairo);
+
+    wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
+    wl_surface_damage(
+        state->wl_surface, 0, 0, state->output_width, state->output_height
+    );
+    wl_surface_commit(state->wl_surface);
+}
 
 static void noop() {}
 
@@ -60,16 +83,16 @@ static void handle_keyboard_key(
     uint32_t key, uint32_t key_state
 ) {
     struct state       *state = data;
-    char                buffer[64];
+    char                text[64];
     const xkb_keycode_t key_code = key + 8;
     const xkb_keysym_t  key_sym =
         xkb_state_key_get_one_sym(state->xkb_state, key_code);
+    xkb_keysym_to_utf8(key_sym, text, sizeof(text));
 
     if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        switch (key_sym) {
-        case XKB_KEY_Escape:
-            state->running = false;
-            break;
+        bool redraw = state->mode->key(state, key_sym, text);
+        if (redraw) {
+            send_frame(state);
         }
     }
 }
@@ -140,29 +163,6 @@ const struct wl_registry_listener wl_registry_listener = {
     .global_remove = noop,
 };
 
-static void send_frame(struct state *state) {
-    struct surface_buffer *surface_buffer = get_next_buffer(
-        state->wl_shm, &state->surface_buffer_pool, state->output_width,
-        state->output_height
-    );
-    if (surface_buffer == NULL) {
-        return;
-    }
-    surface_buffer->state = SURFACE_BUFFER_BUSY;
-
-    cairo_t *cairo = surface_buffer->cairo;
-    cairo_identity_matrix(cairo);
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(cairo, .5, 0, 0, .1);
-    cairo_paint(cairo);
-
-    wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
-    wl_surface_damage(
-        state->wl_surface, 0, 0, state->output_width, state->output_height
-    );
-    wl_surface_commit(state->wl_surface);
-}
-
 static void handle_layer_surface_configure(
     void *data, struct zwlr_layer_surface_v1 *layer_surface, uint32_t serial,
     uint32_t width, uint32_t height
@@ -201,7 +201,10 @@ int main() {
         .xkb_keymap       = NULL,
         .xkb_state        = NULL,
         .running          = true,
+        .mode             = &tile_mode_interface,
     };
+
+    tile_mode_enter(&state);
 
     state.wl_display = wl_display_connect(NULL);
     if (state.wl_display == NULL) {

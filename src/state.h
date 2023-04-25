@@ -1,9 +1,20 @@
+#ifndef __SURFACE_STATE_H_INCLUDED__
+#define __SURFACE_STATE_H_INCLUDED__
+
 #include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #include <stdbool.h>
 #include <wayland-client.h>
 #include <xkbcommon/xkbcommon.h>
+
+#define NO_AREA_SELECTION -1
+
+struct mode_interface;
+
+struct tile_mode_state {
+    char area_selection[3];
+};
 
 struct state {
     struct wl_display            *wl_display;
@@ -22,4 +33,10 @@ struct state {
     bool                          running;
     uint32_t                      output_height;
     uint32_t                      output_width;
+    struct mode_interface        *mode;
+    union {
+        struct tile_mode_state tile;
+    } mode_state;
 };
+
+#endif
