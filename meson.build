@@ -21,7 +21,9 @@ executable(
   [
     'src/main.c',
     'src/surface-buffer.c',
-    'src/mode.c',
+    'src/mode_tile.c',
+    'src/mode_bisect.c',
+    'src/utils.c',
     protos_src,
   ],
   dependencies: [

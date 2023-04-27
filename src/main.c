@@ -171,6 +171,11 @@ static void handle_layer_surface_configure(
     state->output_width  = width;
     state->output_height = height;
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
+
+    if (state->mode == NULL) {
+        tile_mode_enter(state);
+    }
+
     send_frame(state);
 }
 
@@ -201,10 +206,13 @@ int main() {
         .xkb_keymap       = NULL,
         .xkb_state        = NULL,
         .running          = true,
-        .mode             = &tile_mode_interface,
-    };
+        .mode             = NULL,
+        .result           = (struct rect){-1, -1, -1, -1},
 
-    tile_mode_enter(&state);
+ // TODO: Generate this from the keyboard key map we get when it's
+  // loaded. This is the home row for the Dvorak layout.
+        .home_row = (char *[]){"a", "o", "e", "u", "h", "t", "n", "s"},
+    };
 
     state.wl_display = wl_display_connect(NULL);
     if (state.wl_display == NULL) {
@@ -268,6 +276,13 @@ int main() {
     );
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
+
+    if (state.result.x != -1) {
+        printf(
+            "%dx%d+%d+%d\n", state.result.w, state.result.h, state.result.x,
+            state.result.y
+        );
+    }
 
     wl_surface_destroy(state.wl_surface);
     zwlr_layer_surface_v1_destroy(state.wl_layer_surface);

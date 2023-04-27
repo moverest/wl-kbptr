@@ -1,34 +1,40 @@
 #include "mode.h"
-
 #include "state.h"
+#include "utils.h"
 
 #include <cairo.h>
 #include <stdbool.h>
 #include <string.h>
 #include <xkbcommon/xkbcommon.h>
 
-// TODO: Generate this from the keyboard key map we get when it's loaded.
-// This is the home row for the Dvorak layout.
-const char *home_row[] = {"a", "o", "e", "u", "h", "t", "n", "s"};
-
 void tile_mode_enter(struct state *state) {
+    state->mode = &tile_mode_interface;
+
     memset(
         state->mode_state.tile.area_selection, NO_AREA_SELECTION,
         sizeof(state->mode_state.tile.area_selection) /
             sizeof(state->mode_state.tile.area_selection[0])
     );
-}
 
-static int min(int a, int b) {
-    return a < b ? a : b;
-}
+    const int max_num_sub_areas = 8 * 8 * 8;
+    const int area_size         = state->output_width * state->output_height;
+    const int sub_area_size     = area_size / max_num_sub_areas;
 
-static int max(int a, int b) {
-    return a > b ? a : b;
+    struct tile_mode_state *ms = &state->mode_state.tile;
+
+    ms->sub_area_height     = sqrt(sub_area_size / 2.);
+    ms->sub_area_rows       = state->output_height / ms->sub_area_height;
+    ms->sub_area_height_off = state->output_height % ms->sub_area_rows;
+    ms->sub_area_height     = state->output_height / ms->sub_area_rows;
+
+    ms->sub_area_width     = sqrt(sub_area_size * 2);
+    ms->sub_area_columns   = state->output_width / ms->sub_area_width;
+    ms->sub_area_width_off = state->output_width % ms->sub_area_columns;
+    ms->sub_area_width     = state->output_width / ms->sub_area_columns;
 }
 
 static void idx_to_label(
-    int idx, int num, char *selection, char *label_selected,
+    int idx, int num, char *selection, char **home_row, char *label_selected,
     char *label_unselected
 ) {
     label_selected[0]   = 0;
@@ -63,17 +69,48 @@ static bool selectable_area(int idx, int num, char selection[]) {
     return true;
 }
 
-bool tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
+static int get_selected_area_idx(struct tile_mode_state *mode_state) {
+    int idx  = 0;
+    int base = 1;
+    for (int i = 0; i < 3; i++) {
+        if (mode_state->area_selection[i] == NO_AREA_SELECTION) {
+            return -1;
+        }
+        idx  += base * mode_state->area_selection[i];
+        base *= 8;
+    }
+
+    return idx;
+}
+
+static struct rect idx_to_rect(struct tile_mode_state *mode_state, int idx) {
+    int column = idx / mode_state->sub_area_rows;
+    int row    = idx % mode_state->sub_area_rows;
+
+    return (struct rect){
+        .x = column * mode_state->sub_area_width +
+             min(column, mode_state->sub_area_width_off),
+        .w = mode_state->sub_area_width +
+             (column < mode_state->sub_area_width_off ? 1 : 0),
+        .y = row * mode_state->sub_area_height +
+             min(row, mode_state->sub_area_height_off),
+        .h = mode_state->sub_area_height +
+             (row < mode_state->sub_area_height_off ? 1 : 0),
+    };
+}
+
+static bool
+tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
+    struct tile_mode_state *ms = &state->mode_state.tile;
+
     switch (keysym) {
     case XKB_KEY_BackSpace:;
         int i;
-        for (i = 0; i < 3 && state->mode_state.tile.area_selection[i] !=
-                                 NO_AREA_SELECTION;
-             i++) {
+        for (i = 0; i < 3 && ms->area_selection[i] != NO_AREA_SELECTION; i++) {
             ;
         }
         if (i > 0) {
-            state->mode_state.tile.area_selection[i - 1] = NO_AREA_SELECTION;
+            ms->area_selection[i - 1] = NO_AREA_SELECTION;
             return true;
         }
         break;
@@ -82,19 +119,18 @@ bool tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
         state->running = false;
         break;
     default:;
-        int matched_i = -1;
-        for (int i = 0; i < (sizeof(home_row) / sizeof(home_row[0])); i++) {
-            if (strcmp(text, home_row[i]) == 0) {
-                matched_i = i;
-                break;
-            }
-        }
+        int matched_i = find_str(state->home_row, HOME_ROW_LEN, text);
 
         if (matched_i != -1) {
             for (int i = 0; i < 3; i++) {
-                if (state->mode_state.tile.area_selection[i] ==
-                    NO_AREA_SELECTION) {
-                    state->mode_state.tile.area_selection[i] = matched_i;
+                if (ms->area_selection[i] == NO_AREA_SELECTION) {
+                    ms->area_selection[i] = matched_i;
+
+                    if (i == 2) {
+                        bisect_mode_enter(
+                            state, idx_to_rect(ms, get_selected_area_idx(ms))
+                        );
+                    }
                     return true;
                 }
             }
@@ -105,35 +141,27 @@ bool tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 }
 
 void tile_mode_render(struct state *state, cairo_t *cairo) {
-    const int max_num_sub_areas = 8 * 8 * 8;
-    const int area_size         = state->output_width * state->output_height;
-    const int sub_area_size     = area_size / max_num_sub_areas;
 
-    int       sub_area_height     = sqrt(sub_area_size / 2.);
-    const int sub_area_rows       = state->output_height / sub_area_height;
-    const int sub_area_height_off = state->output_height % sub_area_rows;
-    sub_area_height               = state->output_height / sub_area_rows;
-
-    int       sub_area_width     = sqrt(sub_area_size * 2);
-    const int sub_area_columns   = state->output_width / sub_area_width;
-    const int sub_area_width_off = state->output_width % sub_area_columns;
-    sub_area_width               = state->output_width / sub_area_columns;
-
-    char label_selected[32];
-    char label_unselected[32];
-    int  count = 0;
+    char                    label_selected[32];
+    char                    label_unselected[32];
+    int                     count = 0;
+    struct tile_mode_state *ms    = &state->mode_state.tile;
 
     cairo_select_font_face(
         cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
     );
-    cairo_set_font_size(cairo, (int)(sub_area_height / 2));
+    cairo_set_font_size(cairo, (int)(ms->sub_area_height / 2));
 
-    for (int i = 0; i < sub_area_columns; i++) {
-        for (int j = 0; j < sub_area_rows; j++) {
-            const int x = i * sub_area_width + min(i, sub_area_width_off);
-            const int w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
-            const int y = j * sub_area_height + min(j, sub_area_height_off);
-            const int h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
+    for (int i = 0; i < ms->sub_area_columns; i++) {
+        for (int j = 0; j < ms->sub_area_rows; j++) {
+            const int x =
+                i * ms->sub_area_width + min(i, ms->sub_area_width_off);
+            const int w =
+                ms->sub_area_width + (i < ms->sub_area_width_off ? 1 : 0);
+            const int y =
+                j * ms->sub_area_height + min(j, ms->sub_area_height_off);
+            const int h =
+                ms->sub_area_height + (j < ms->sub_area_height_off ? 1 : 0);
 
             const bool selectable = selectable_area(
                 count, 3, state->mode_state.tile.area_selection
@@ -155,7 +183,7 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
 
                 idx_to_label(
                     count, 3, state->mode_state.tile.area_selection,
-                    label_selected, label_unselected
+                    state->home_row, label_selected, label_unselected
                 );
 
                 cairo_text_extents_t te_selected, te_unselected;

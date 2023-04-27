@@ -9,11 +9,31 @@
 #include <xkbcommon/xkbcommon.h>
 
 #define NO_AREA_SELECTION -1
+#define HOME_ROW_LEN      8
 
 struct mode_interface;
 
 struct tile_mode_state {
+    int sub_area_rows;
+    int sub_area_width;
+    int sub_area_width_off;
+
+    int sub_area_columns;
+    int sub_area_height;
+    int sub_area_height_off;
+
     char area_selection[3];
+};
+
+struct rect {
+    uint32_t x;
+    uint32_t y;
+    uint32_t w;
+    uint32_t h;
+};
+
+struct bisect_mode_state {
+    struct rect area;
 };
 
 struct state {
@@ -33,9 +53,12 @@ struct state {
     bool                          running;
     uint32_t                      output_height;
     uint32_t                      output_width;
+    char                        **home_row;
+    struct rect                   result;
     struct mode_interface        *mode;
     union {
-        struct tile_mode_state tile;
+        struct tile_mode_state   tile;
+        struct bisect_mode_state bisect;
     } mode_state;
 };
 
