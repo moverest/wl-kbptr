@@ -7,6 +7,7 @@
 #define LABEL_FONT_SIZE 20
 #define LABEL_PADDING   10
 #define DIVIDE_8_RATIO  1.8
+#define POINTER_SIZE    20
 
 void bisect_mode_enter(struct state *state, struct rect area) {
     state->mode                   = &bisect_mode_interface;
@@ -57,6 +58,24 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
             cairo_stroke(cairo);
         }
     }
+
+    cairo_set_source_rgba(cairo, .7, .2, .2, .7);
+    const int pointer_x = area->x + area->w / 2;
+    const int pointer_y = area->y + area->h / 2;
+    cairo_move_to(
+        cairo, pointer_x + .5, pointer_y - (int)(POINTER_SIZE / 2) + .5
+    );
+    cairo_line_to(
+        cairo, pointer_x + .5, pointer_y + (int)(POINTER_SIZE / 2) + .5
+    );
+    cairo_stroke(cairo);
+    cairo_move_to(
+        cairo, pointer_x - (int)(POINTER_SIZE / 2) + .5, pointer_y + .5
+    );
+    cairo_line_to(
+        cairo, pointer_x + (int)(POINTER_SIZE / 2) + .5, pointer_y + .5
+    );
+    cairo_stroke(cairo);
 
     cairo_select_font_face(
         cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
