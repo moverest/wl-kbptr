@@ -19,7 +19,7 @@ static int create_shm_file(void) {
         return -1;
     }
 
-    shm_unlink(name);
+    unlink(name);
     return fd;
 }
 
