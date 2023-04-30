@@ -43,6 +43,49 @@ static void send_frame(struct state *state) {
 
 static void noop() {}
 
+static void load_home_row(
+    struct xkb_keymap *keymap, char **home_row, char *home_row_buffer
+) {
+    static const xkb_keycode_t key_codes[] = {
+        0x26, // a
+        0x27, // s
+        0x28, // d
+        0x29, // u
+        0x2c, // j
+        0x2d, // k
+        0x2e, // l
+        0x2f, // m
+    };
+
+    struct xkb_state *xkb_state   = xkb_state_new(keymap);
+    char             *buffer      = home_row_buffer;
+    size_t            buffer_size = 128;
+
+    for (int i = 0; i < sizeof(key_codes) / sizeof(key_codes[0]); i++) {
+        xkb_keysym_t keysym =
+            xkb_state_key_get_one_sym(xkb_state, key_codes[i]);
+        int char_len = xkb_keysym_to_utf8(keysym, buffer, buffer_size);
+        if (char_len < 0) {
+            LOG_ERR("Could not load home row keys. Buffer is too small.");
+            exit(1);
+        }
+
+        if (char_len == 0) {
+            LOG_ERR(
+                "0x%x symkey does not have a UTF-8 representation in given "
+                "keymap.",
+                key_codes[i]
+            );
+            exit(1);
+        }
+
+        home_row[i] = buffer;
+        buffer      += char_len;
+    }
+
+    xkb_state_unref(xkb_state);
+}
+
 static void handle_keyboard_keymap(
     void *data, struct wl_keyboard *keyboard, uint32_t format, int fd,
     uint32_t size
@@ -81,6 +124,7 @@ static void handle_keyboard_keymap(
         break;
     }
 
+    load_home_row(state->xkb_keymap, state->home_row, state->home_row_buffer);
     state->xkb_state = xkb_state_new(state->xkb_keymap);
 }
 
@@ -276,10 +320,7 @@ int main() {
         .running          = true,
         .mode             = NULL,
         .result           = (struct rect){-1, -1, -1, -1},
-
- // TODO: Generate this from the keyboard key map we get when it's
-  // loaded. This is the home row for the Dvorak layout.
-        .home_row = (char *[]){"a", "o", "e", "u", "h", "t", "n", "s"},
+        .home_row         = (char *[]){"a", "s", "d", "f", "j", "k", "n", "m"},
     };
 
     wl_list_init(&state.outputs);

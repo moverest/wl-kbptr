@@ -9,8 +9,9 @@
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
-#define NO_AREA_SELECTION -1
-#define HOME_ROW_LEN      8
+#define NO_AREA_SELECTION   -1
+#define HOME_ROW_LEN        8
+#define HOME_ROW_BUFFER_LEN 128
 
 struct mode_interface;
 
@@ -62,6 +63,7 @@ struct state {
     bool                          running;
     uint32_t                      surface_height;
     uint32_t                      surface_width;
+    char                          home_row_buffer[HOME_ROW_BUFFER_LEN];
     char                        **home_row;
     struct rect                   result;
     struct mode_interface        *mode;
