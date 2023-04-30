@@ -17,20 +17,20 @@ void tile_mode_enter(struct state *state) {
     );
 
     const int max_num_sub_areas = 8 * 8 * 8;
-    const int area_size         = state->output_width * state->output_height;
+    const int area_size         = state->surface_width * state->surface_height;
     const int sub_area_size     = area_size / max_num_sub_areas;
 
     struct tile_mode_state *ms = &state->mode_state.tile;
 
     ms->sub_area_height     = sqrt(sub_area_size / 2.);
-    ms->sub_area_rows       = state->output_height / ms->sub_area_height;
-    ms->sub_area_height_off = state->output_height % ms->sub_area_rows;
-    ms->sub_area_height     = state->output_height / ms->sub_area_rows;
+    ms->sub_area_rows       = state->surface_height / ms->sub_area_height;
+    ms->sub_area_height_off = state->surface_height % ms->sub_area_rows;
+    ms->sub_area_height     = state->surface_height / ms->sub_area_rows;
 
     ms->sub_area_width     = sqrt(sub_area_size * 2);
-    ms->sub_area_columns   = state->output_width / ms->sub_area_width;
-    ms->sub_area_width_off = state->output_width % ms->sub_area_columns;
-    ms->sub_area_width     = state->output_width / ms->sub_area_columns;
+    ms->sub_area_columns   = state->surface_width / ms->sub_area_width;
+    ms->sub_area_width_off = state->surface_width % ms->sub_area_columns;
+    ms->sub_area_width     = state->surface_width / ms->sub_area_columns;
 }
 
 static void idx_to_label(

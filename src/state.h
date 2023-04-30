@@ -6,6 +6,7 @@
 
 #include <stdbool.h>
 #include <wayland-client.h>
+#include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
 #define NO_AREA_SELECTION -1
@@ -36,6 +37,12 @@ struct bisect_mode_state {
     struct rect area;
 };
 
+struct output {
+    struct wl_list    link; // type: struct output
+    struct wl_output *wl_output;
+    int32_t           scale;
+};
+
 struct state {
     struct wl_display            *wl_display;
     struct wl_registry           *wl_registry;
@@ -50,9 +57,11 @@ struct state {
     struct xkb_context           *xkb_context;
     struct xkb_keymap            *xkb_keymap;
     struct xkb_state             *xkb_state;
+    struct wl_list                outputs;
+    struct output                *current_output;
     bool                          running;
-    uint32_t                      output_height;
-    uint32_t                      output_width;
+    uint32_t                      surface_height;
+    uint32_t                      surface_width;
     char                        **home_row;
     struct rect                   result;
     struct mode_interface        *mode;

@@ -6,18 +6,22 @@
 
 #include <cairo/cairo.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
+#include <wayland-util.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 
 static void send_frame(struct state *state) {
+    const int32_t scale =
+        state->current_output == NULL ? 1 : state->current_output->scale;
     struct surface_buffer *surface_buffer = get_next_buffer(
-        state->wl_shm, &state->surface_buffer_pool, state->output_width,
-        state->output_height
+        state->wl_shm, &state->surface_buffer_pool,
+        state->surface_width * scale, state->surface_height * scale
     );
     if (surface_buffer == NULL) {
         return;
@@ -26,11 +30,13 @@ static void send_frame(struct state *state) {
 
     cairo_t *cairo = surface_buffer->cairo;
     cairo_identity_matrix(cairo);
+    cairo_scale(cairo, scale, scale);
     state->mode->render(state, cairo);
 
+    wl_surface_set_buffer_scale(state->wl_surface, scale);
     wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
     wl_surface_damage(
-        state->wl_surface, 0, 0, state->output_width, state->output_height
+        state->wl_surface, 0, 0, state->surface_width, state->surface_height
     );
     wl_surface_commit(state->wl_surface);
 }
@@ -134,6 +140,60 @@ const struct wl_seat_listener wl_seat_listener = {
     .capabilities = handle_seat_capabilities,
 };
 
+static void free_outputs(struct wl_list *outputs) {
+    struct output *output;
+    struct output *tmp;
+    wl_list_for_each_safe (output, tmp, outputs, link) {
+        wl_output_destroy(output->wl_output);
+        wl_list_remove(&output->link);
+        free(output);
+    }
+}
+
+static struct output *find_output_from_wl_output(
+    struct wl_list *outputs, struct wl_output *wl_output
+) {
+    struct output *output;
+    wl_list_for_each (output, outputs, link) {
+        if (wl_output == output->wl_output) {
+            return output;
+        }
+    }
+
+    return NULL;
+}
+
+static void
+handle_output_scale(void *data, struct wl_output *wl_output, int32_t scale) {
+    struct output *output = data;
+    output->scale         = scale;
+}
+
+const static struct wl_output_listener output_listener = {
+    .name        = noop,
+    .geometry    = noop,
+    .mode        = noop,
+    .scale       = handle_output_scale,
+    .description = noop,
+    .done        = noop,
+};
+
+static void handle_surface_enter(
+    void *data, struct wl_surface *surface, struct wl_output *wl_output
+) {
+    struct state  *state = data;
+    struct output *output =
+        find_output_from_wl_output(&state->outputs, wl_output);
+    state->current_output = output;
+}
+
+static const struct wl_surface_listener surface_listener = {
+    .enter                      = handle_surface_enter,
+    .leave                      = noop,
+    .preferred_buffer_transform = noop,
+    .preferred_buffer_scale     = noop,
+};
+
 static void handle_registry_global(
     void *data, struct wl_registry *registry, uint32_t name,
     const char *interface, uint32_t version
@@ -155,6 +215,14 @@ static void handle_registry_global(
         state->wl_seat =
             wl_registry_bind(registry, name, &wl_seat_interface, 7);
         wl_seat_add_listener(state->wl_seat, &wl_seat_listener, state);
+    } else if (strcmp(interface, wl_output_interface.name) == 0) {
+        struct wl_output *wl_output =
+            wl_registry_bind(registry, name, &wl_output_interface, 3);
+        struct output *output = calloc(1, sizeof(struct output));
+        output->wl_output     = wl_output;
+        output->scale         = 1;
+        wl_output_add_listener(output->wl_output, &output_listener, output);
+        wl_list_insert(&state->outputs, &output->link);
     }
 }
 
@@ -167,9 +235,9 @@ static void handle_layer_surface_configure(
     void *data, struct zwlr_layer_surface_v1 *layer_surface, uint32_t serial,
     uint32_t width, uint32_t height
 ) {
-    struct state *state  = data;
-    state->output_width  = width;
-    state->output_height = height;
+    struct state *state   = data;
+    state->surface_width  = width;
+    state->surface_height = height;
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 
     if (state->mode == NULL) {
@@ -214,6 +282,8 @@ int main() {
         .home_row = (char *[]){"a", "o", "e", "u", "h", "t", "n", "s"},
     };
 
+    wl_list_init(&state.outputs);
+
     state.wl_display = wl_display_connect(NULL);
     if (state.wl_display == NULL) {
         LOG_ERR("Failed to connect to Wayland compositor.");
@@ -257,7 +327,8 @@ int main() {
 
     surface_buffer_pool_init(&state.surface_buffer_pool);
 
-    state.wl_surface       = wl_compositor_create_surface(state.wl_compositor);
+    state.wl_surface = wl_compositor_create_surface(state.wl_compositor);
+    wl_surface_add_listener(state.wl_surface, &surface_listener, &state);
     state.wl_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         state.wl_layer_shell, state.wl_surface, NULL,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "wl-kbptr"
@@ -300,6 +371,8 @@ int main() {
         xkb_keymap_unref(state.xkb_keymap);
     }
     wl_seat_destroy(state.wl_seat);
+
+    free_outputs(&state.outputs);
 
     zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
     wl_shm_destroy(state.wl_shm);
