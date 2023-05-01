@@ -15,6 +15,10 @@ void bisect_mode_enter(struct state *state, struct rect area) {
     state->mode_state.bisect.current  = 0;
 }
 
+static bool should_divide_by_8(struct rect *area) {
+    return area->w > area->h * DIVIDE_8_RATIO;
+}
+
 static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(cairo, .2, .2, .2, .3);
@@ -23,7 +27,7 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     struct rect *area =
         &state->mode_state.bisect.areas[state->mode_state.bisect.current];
 
-    bool divide_8 = area->w > area->h * DIVIDE_8_RATIO;
+    bool divide_8 = should_divide_by_8(area);
 
     const int sub_area_columns = divide_8 ? 4 : 2;
     const int sub_area_rows    = 2;
@@ -128,8 +132,14 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_show_text(cairo, label);
 }
 
-static void idx_to_rect(struct rect *area, int idx, struct rect *rect) {
-    bool divide_8 = area->w > area->h * DIVIDE_8_RATIO;
+// `idx_to_rect` returns the sub-area indicated by the given index in `rect`
+// while also returning true. If the index does map to a sub-area, `rect` is
+// left unchanged and it returns false.
+static bool idx_to_rect(struct rect *area, int idx, struct rect *rect) {
+    bool divide_8 = should_divide_by_8(area);
+    if (!divide_8 && idx >= 4) {
+        return false;
+    }
 
     const int sub_area_columns = divide_8 ? 4 : 2;
     const int sub_area_rows    = 2;
@@ -146,6 +156,8 @@ static void idx_to_rect(struct rect *area, int idx, struct rect *rect) {
     rect->y = area->y + j * sub_area_height + min(j, sub_area_height_off);
     rect->w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
     rect->h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
+
+    return true;
 }
 
 static bool
@@ -184,9 +196,11 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
         const bool   last_area = mode_state->current + 1 >= 10;
         new_area               = last_area ? &state->result
                                            : &mode_state->areas[mode_state->current + 1];
-        idx_to_rect(
-            &mode_state->areas[mode_state->current], matched_i, new_area
-        );
+        if (!idx_to_rect(
+                &mode_state->areas[mode_state->current], matched_i, new_area
+            )) {
+            return false;
+        }
 
         if (last_area) {
             state->running = false;
