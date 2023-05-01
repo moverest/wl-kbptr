@@ -1,6 +1,8 @@
 # wl-kbptr
 
-`wl-kbptr`, short for Wayland Keyboard Pointer, is a utility to control the mouse pointer with the keyboard.
+`wl-kbptr` &mdash; short for Wayland Keyboard Pointer &mdash; is a utility enabling the control the mouse pointer with the keyboard.
+
+![demo](https://user-images.githubusercontent.com/19509728/235551237-c19a53ba-475f-4670-b9ec-2a84138094c9.gif)
 
 Note that your compositor needs to support the [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) and [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) protocols.
 
