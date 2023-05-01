@@ -320,7 +320,7 @@ int main() {
         .running          = true,
         .mode             = NULL,
         .result           = (struct rect){-1, -1, -1, -1},
-        .home_row         = (char *[]){"a", "s", "d", "f", "j", "k", "n", "m"},
+        .home_row         = (char *[]){"", "", "", "", "", "", "", ""},
     };
 
     wl_list_init(&state.outputs);
