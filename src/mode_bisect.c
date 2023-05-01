@@ -10,8 +10,9 @@
 #define POINTER_SIZE    20
 
 void bisect_mode_enter(struct state *state, struct rect area) {
-    state->mode                   = &bisect_mode_interface;
-    state->mode_state.bisect.area = area;
+    state->mode                       = &bisect_mode_interface;
+    state->mode_state.bisect.areas[0] = area;
+    state->mode_state.bisect.current  = 0;
 }
 
 static void bisect_mode_render(struct state *state, cairo_t *cairo) {
@@ -19,7 +20,8 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_source_rgba(cairo, .2, .2, .2, .3);
     cairo_paint(cairo);
 
-    struct rect *area = &state->mode_state.bisect.area;
+    struct rect *area =
+        &state->mode_state.bisect.areas[state->mode_state.bisect.current];
 
     bool divide_8 = area->w > area->h * DIVIDE_8_RATIO;
 
@@ -126,9 +128,7 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_show_text(cairo, label);
 }
 
-struct rect idx_to_rect(struct bisect_mode_state *mode_state, int idx) {
-    struct rect *area = &mode_state->area;
-
+static void idx_to_rect(struct rect *area, int idx, struct rect *rect) {
     bool divide_8 = area->w > area->h * DIVIDE_8_RATIO;
 
     const int sub_area_columns = divide_8 ? 4 : 2;
@@ -142,31 +142,55 @@ struct rect idx_to_rect(struct bisect_mode_state *mode_state, int idx) {
     const int i = idx % sub_area_columns;
     const int j = idx / sub_area_columns;
 
-    const int x = area->x + i * sub_area_width + min(i, sub_area_width_off);
-    const int y = area->y + j * sub_area_height + min(j, sub_area_height_off);
-    const int w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
-    const int h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
-
-    return (struct rect){x, y, w, h};
+    rect->x = area->x + i * sub_area_width + min(i, sub_area_width_off);
+    rect->y = area->y + j * sub_area_height + min(j, sub_area_height_off);
+    rect->w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
+    rect->h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
 }
 
-bool bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
+static bool
+bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
+    struct bisect_mode_state *mode_state = &state->mode_state.bisect;
+
     switch (keysym) {
     case XKB_KEY_Escape:
         state->running = false;
         break;
+
     case XKB_KEY_Return:
     case XKB_KEY_space:
         memcpy(
-            &state->result, &state->mode_state.bisect.area, sizeof(struct rect)
+            &state->result, &mode_state->areas[mode_state->current],
+            sizeof(struct rect)
         );
         state->running = false;
+        return false;
+
+    case XKB_KEY_BackSpace:
+        if (mode_state->current > 0) {
+            mode_state->current--;
+        }
+        return true;
+
     default:;
         int matched_i = find_str(state->home_row, HOME_ROW_LEN, text);
-        if (matched_i >= 0) {
-            struct rect new_area =
-                idx_to_rect(&state->mode_state.bisect, matched_i);
-            memcpy(&state->mode_state.bisect, &new_area, sizeof(struct rect));
+        if (matched_i < 0) {
+            return false;
+        }
+
+        struct rect *new_area;
+        const bool   last_area = mode_state->current + 1 >= 10;
+        new_area               = last_area ? &state->result
+                                           : &mode_state->areas[mode_state->current + 1];
+        idx_to_rect(
+            &mode_state->areas[mode_state->current], matched_i, new_area
+        );
+
+        if (last_area) {
+            state->running = false;
+            return false;
+        } else {
+            mode_state->current++;
             return true;
         }
     }

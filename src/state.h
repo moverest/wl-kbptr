@@ -13,6 +13,7 @@
 #define NO_AREA_SELECTION   -1
 #define HOME_ROW_LEN        8
 #define HOME_ROW_BUFFER_LEN 128
+#define BISECT_MAX_HISTORY  10
 
 struct mode_interface;
 
@@ -36,7 +37,8 @@ struct rect {
 };
 
 struct bisect_mode_state {
-    struct rect area;
+    struct rect areas[BISECT_MAX_HISTORY];
+    int         current;
 };
 
 struct output {
