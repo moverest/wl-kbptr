@@ -3,6 +3,7 @@
 #include "state.h"
 #include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 
 #include <cairo/cairo.h>
 #include <math.h>
@@ -267,6 +268,10 @@ static void handle_registry_global(
         output->scale         = 1;
         wl_output_add_listener(output->wl_output, &output_listener, output);
         wl_list_insert(&state->outputs, &output->link);
+    } else if (strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name) == 0) {
+        state->wl_virtual_pointer_mgr = wl_registry_bind(
+            registry, name, &zwlr_virtual_pointer_manager_v1_interface, 2
+        );
     }
 }
 
@@ -302,6 +307,39 @@ const struct zwlr_layer_surface_v1_listener wl_layer_surface_listener = {
     .configure = handle_layer_surface_configure,
     .closed    = handle_layer_surface_closed,
 };
+
+static void click(struct state *state) {
+    wl_display_roundtrip(state->wl_display);
+
+    struct zwlr_virtual_pointer_v1 *virt_pointer =
+        zwlr_virtual_pointer_manager_v1_create_virtual_pointer_with_output(
+            state->wl_virtual_pointer_mgr, state->wl_seat,
+            state->current_output->wl_output
+        );
+
+    int x = state->result.x + state->result.w / 2;
+    int y = state->result.y + state->result.h / 2;
+
+    zwlr_virtual_pointer_v1_motion_absolute(
+        virt_pointer, 0, x, y, state->surface_width, state->surface_height
+    );
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_button(
+        virt_pointer, 0, 272, WL_POINTER_BUTTON_STATE_PRESSED
+    );
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_button(
+        virt_pointer, 0, 272, WL_POINTER_BUTTON_STATE_RELEASED
+    );
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_destroy(virt_pointer);
+}
 
 int main() {
     struct state state = {
@@ -366,6 +404,11 @@ int main() {
         return 1;
     }
 
+    if (state.wl_virtual_pointer_mgr == NULL) {
+        LOG_ERR("Could not load wlr_virtual_pointer_manager_v1 object.");
+        return 1;
+    }
+
     surface_buffer_pool_init(&state.surface_buffer_pool);
 
     state.wl_surface = wl_compositor_create_surface(state.wl_compositor);
@@ -389,17 +432,18 @@ int main() {
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
+    wl_surface_destroy(state.wl_surface);
+    zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
+
+    surface_buffer_pool_destroy(&state.surface_buffer_pool);
+
     if (state.result.x != -1) {
         printf(
             "%dx%d+%d+%d\n", state.result.w, state.result.h, state.result.x,
             state.result.y
         );
+        click(&state);
     }
-
-    wl_surface_destroy(state.wl_surface);
-    zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
-
-    surface_buffer_pool_destroy(&state.surface_buffer_pool);
 
     if (state.wl_keyboard != NULL) {
         wl_keyboard_destroy(state.wl_keyboard);
