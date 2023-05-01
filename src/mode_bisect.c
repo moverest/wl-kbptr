@@ -169,6 +169,8 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
     case XKB_KEY_BackSpace:
         if (mode_state->current > 0) {
             mode_state->current--;
+        } else {
+            tile_mode_reenter(state);
         }
         return true;
 

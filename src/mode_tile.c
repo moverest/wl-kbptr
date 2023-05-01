@@ -33,6 +33,29 @@ void tile_mode_enter(struct state *state) {
     ms->sub_area_width     = state->surface_width / ms->sub_area_columns;
 }
 
+// `tile_mode_back` goes back in history. Returns true if there was something to
+// go back to.
+static bool tile_mode_back(struct tile_mode_state *mode_state) {
+    int i;
+    for (i = 0; i < 3 && mode_state->area_selection[i] != NO_AREA_SELECTION;
+         i++) {
+        ;
+    }
+    if (i > 0) {
+        mode_state->area_selection[i - 1] = NO_AREA_SELECTION;
+        return true;
+    }
+
+    return false;
+}
+
+// `tile_mode_reenter` reenters the tile mode. We assume that the saved state is
+// valid and goes back in history once.
+void tile_mode_reenter(struct state *state) {
+    state->mode = &tile_mode_interface;
+    tile_mode_back(&state->mode_state.tile);
+}
+
 static void idx_to_label(
     int idx, int num, char *selection, char **home_row, char *label_selected,
     char *label_unselected
@@ -104,15 +127,8 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
     struct tile_mode_state *ms = &state->mode_state.tile;
 
     switch (keysym) {
-    case XKB_KEY_BackSpace:;
-        int i;
-        for (i = 0; i < 3 && ms->area_selection[i] != NO_AREA_SELECTION; i++) {
-            ;
-        }
-        if (i > 0) {
-            ms->area_selection[i - 1] = NO_AREA_SELECTION;
-            return true;
-        }
+    case XKB_KEY_BackSpace:
+        return tile_mode_back(ms);
         break;
 
     case XKB_KEY_Escape:

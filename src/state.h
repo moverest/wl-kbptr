@@ -71,7 +71,7 @@ struct state {
     char                 **home_row;
     struct rect            result;
     struct mode_interface *mode;
-    union {
+    struct {
         struct tile_mode_state   tile;
         struct bisect_mode_state bisect;
     } mode_state;
