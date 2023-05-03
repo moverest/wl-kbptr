@@ -25,12 +25,34 @@ meson install -C build
 
 ## Setting the bindings
 
-To start the utility with a key shortcut, a binding needs to be set.
-
 ### Sway
 
 ```
-swaymsg bindsym '$mod+g' exec wl-kbptr
+mode Mouse {
+    bindsym g mode default, exec 'wl-kbptr; swaymsg mode Mouse'
+
+    # Mouse move
+    bindsym h seat seat0 cursor move -15 0
+    bindsym j seat seat0 cursor move 0 15
+    bindsym k seat seat0 cursor move 0 -15
+    bindsym l seat seat0 cursor move 15 0
+
+    # Left button
+    bindsym s seat seat0 cursor press button1
+    bindsym --release s seat seat0 cursor release button1
+
+    # Middle button
+    bindsym d seat seat0 cursor press button2
+    bindsym --release d seat seat0 cursor release button2
+
+    # Right button
+    bindsym f seat seat0 cursor press button3
+    bindsym --release f seat seat0 cursor release button3
+
+    bindsym Escape mode default
+}
+
+bindsym $mod+g mode Mouse
 ```
 
 ## Dependencies
