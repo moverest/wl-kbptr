@@ -308,7 +308,7 @@ const struct zwlr_layer_surface_v1_listener wl_layer_surface_listener = {
     .closed    = handle_layer_surface_closed,
 };
 
-static void click(struct state *state) {
+static void move_pointer(struct state *state) {
     wl_display_roundtrip(state->wl_display);
 
     struct zwlr_virtual_pointer_v1 *virt_pointer =
@@ -322,18 +322,6 @@ static void click(struct state *state) {
 
     zwlr_virtual_pointer_v1_motion_absolute(
         virt_pointer, 0, x, y, state->surface_width, state->surface_height
-    );
-    zwlr_virtual_pointer_v1_frame(virt_pointer);
-    wl_display_roundtrip(state->wl_display);
-
-    zwlr_virtual_pointer_v1_button(
-        virt_pointer, 0, 272, WL_POINTER_BUTTON_STATE_PRESSED
-    );
-    zwlr_virtual_pointer_v1_frame(virt_pointer);
-    wl_display_roundtrip(state->wl_display);
-
-    zwlr_virtual_pointer_v1_button(
-        virt_pointer, 0, 272, WL_POINTER_BUTTON_STATE_RELEASED
     );
     zwlr_virtual_pointer_v1_frame(virt_pointer);
     wl_display_roundtrip(state->wl_display);
@@ -442,7 +430,7 @@ int main() {
             "%dx%d+%d+%d\n", state.result.w, state.result.h, state.result.x,
             state.result.y
         );
-        click(&state);
+        move_pointer(&state);
     }
 
     if (state.wl_keyboard != NULL) {
