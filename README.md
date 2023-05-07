@@ -57,10 +57,10 @@ bindsym $mod+g mode Mouse
 
 ## Dependencies
 
-- `xkbcommon`
-- `cairo`
-- `wayland-client`
-- `wayland-protocols`
+- [`xkbcommon`](https://xkbcommon.org)
+- [`cairo`](https://cairographics.org)
+- [`wayland`](https://wayland.freedesktop.org)
+- [`wayland-protocols`](https://gitlab.freedesktop.org/wayland/wayland-protocols)
 
 
 ## License
