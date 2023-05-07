@@ -13,7 +13,10 @@
 #define NO_AREA_SELECTION   -1
 #define HOME_ROW_LEN        8
 #define HOME_ROW_BUFFER_LEN 128
-#define BISECT_MAX_HISTORY  10
+
+// This should cover a initial maximum area with a width and height of 65536
+// pixels.
+#define BISECT_MAX_HISTORY 16
 
 struct mode_interface;
 
