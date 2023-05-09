@@ -91,20 +91,20 @@ static void handle_keyboard_keymap(
     void *data, struct wl_keyboard *keyboard, uint32_t format, int fd,
     uint32_t size
 ) {
-    struct state *state = data;
-    if (state->xkb_state != NULL) {
-        xkb_state_unref(state->xkb_state);
-        state->xkb_state = NULL;
+    struct seat *seat = data;
+    if (seat->xkb_state != NULL) {
+        xkb_state_unref(seat->xkb_state);
+        seat->xkb_state = NULL;
     }
-    if (state->xkb_keymap != NULL) {
-        xkb_keymap_unref(state->xkb_keymap);
-        state->xkb_keymap = NULL;
+    if (seat->xkb_keymap != NULL) {
+        xkb_keymap_unref(seat->xkb_keymap);
+        seat->xkb_keymap = NULL;
     }
 
     switch (format) {
     case WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP:
-        state->xkb_keymap = xkb_keymap_new_from_names(
-            state->xkb_context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS
+        seat->xkb_keymap = xkb_keymap_new_from_names(
+            seat->xkb_context, NULL, XKB_KEYMAP_COMPILE_NO_FLAGS
         );
         break;
 
@@ -115,8 +115,8 @@ static void handle_keyboard_keymap(
             return;
         }
 
-        state->xkb_keymap = xkb_keymap_new_from_buffer(
-            state->xkb_context, buffer, size - 1, XKB_KEYMAP_FORMAT_TEXT_V1,
+        seat->xkb_keymap = xkb_keymap_new_from_buffer(
+            seat->xkb_context, buffer, size - 1, XKB_KEYMAP_FORMAT_TEXT_V1,
             XKB_KEYMAP_COMPILE_NO_FLAGS
         );
 
@@ -125,25 +125,27 @@ static void handle_keyboard_keymap(
         break;
     }
 
-    load_home_row(state->xkb_keymap, state->home_row, state->home_row_buffer);
-    state->xkb_state = xkb_state_new(state->xkb_keymap);
+    load_home_row(
+        seat->xkb_keymap, seat->state->home_row, seat->state->home_row_buffer
+    );
+    seat->xkb_state = xkb_state_new(seat->xkb_keymap);
 }
 
 static void handle_keyboard_key(
     void *data, struct wl_keyboard *keyboard, uint32_t serial, uint32_t time,
     uint32_t key, uint32_t key_state
 ) {
-    struct state       *state = data;
+    struct seat        *seat = data;
     char                text[64];
     const xkb_keycode_t key_code = key + 8;
     const xkb_keysym_t  key_sym =
-        xkb_state_key_get_one_sym(state->xkb_state, key_code);
+        xkb_state_key_get_one_sym(seat->xkb_state, key_code);
     xkb_keysym_to_utf8(key_sym, text, sizeof(text));
 
     if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        bool redraw = state->mode->key(state, key_sym, text);
+        bool redraw = seat->state->mode->key(seat->state, key_sym, text);
         if (redraw) {
-            send_frame(state);
+            send_frame(seat->state);
         }
     }
 }
@@ -153,9 +155,9 @@ static void handle_keyboard_modifiers(
     uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
     uint32_t group
 ) {
-    struct state *state = data;
+    struct seat *seat = data;
     xkb_state_update_mask(
-        state->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group
+        seat->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group
     );
 }
 
@@ -171,11 +173,11 @@ static const struct wl_keyboard_listener wl_keyboard_listener = {
 static void handle_seat_capabilities(
     void *data, struct wl_seat *wl_seat, uint32_t capabilities
 ) {
-    struct state *state = data;
+    struct seat *seat = data;
     if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
-        state->wl_keyboard = wl_seat_get_keyboard(wl_seat);
+        seat->wl_keyboard = wl_seat_get_keyboard(seat->wl_seat);
         wl_keyboard_add_listener(
-            state->wl_keyboard, &wl_keyboard_listener, data
+            seat->wl_keyboard, &wl_keyboard_listener, data
         );
     }
 }
@@ -184,6 +186,28 @@ const struct wl_seat_listener wl_seat_listener = {
     .name         = noop,
     .capabilities = handle_seat_capabilities,
 };
+
+static void free_seats(struct wl_list *seats) {
+    struct seat *seat;
+    struct seat *tmp;
+    wl_list_for_each_safe (seat, tmp, seats, link) {
+        if (seat->wl_keyboard != NULL) {
+            wl_keyboard_destroy(seat->wl_keyboard);
+        }
+
+        if (seat->xkb_state != NULL) {
+            xkb_state_unref(seat->xkb_state);
+        }
+        if (seat->xkb_keymap != NULL) {
+            xkb_keymap_unref(seat->xkb_keymap);
+        }
+        xkb_context_unref(seat->xkb_context);
+
+        wl_seat_destroy(seat->wl_seat);
+        wl_list_remove(&seat->link);
+        free(seat);
+    }
+}
 
 static void free_outputs(struct wl_list *outputs) {
     struct output *output;
@@ -257,17 +281,27 @@ static void handle_registry_global(
             wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 2);
 
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
-        state->wl_seat =
-            wl_registry_bind(registry, name, &wl_seat_interface, 7);
-        wl_seat_add_listener(state->wl_seat, &wl_seat_listener, state);
+        struct seat *seat = calloc(1, sizeof(struct seat));
+        seat->wl_seat = wl_registry_bind(registry, name, &wl_seat_interface, 7);
+        seat->wl_keyboard = NULL;
+        seat->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+        seat->xkb_state   = NULL;
+        seat->xkb_keymap  = NULL;
+        seat->state       = state;
+
+        wl_seat_add_listener(seat->wl_seat, &wl_seat_listener, seat);
+        wl_list_insert(&state->seats, &seat->link);
+
     } else if (strcmp(interface, wl_output_interface.name) == 0) {
         struct wl_output *wl_output =
             wl_registry_bind(registry, name, &wl_output_interface, 3);
         struct output *output = calloc(1, sizeof(struct output));
         output->wl_output     = wl_output;
         output->scale         = 1;
+
         wl_output_add_listener(output->wl_output, &output_listener, output);
         wl_list_insert(&state->outputs, &output->link);
+
     } else if (strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name) == 0) {
         state->wl_virtual_pointer_mgr = wl_registry_bind(
             registry, name, &zwlr_virtual_pointer_manager_v1_interface, 2
@@ -313,7 +347,8 @@ static void move_pointer(struct state *state) {
 
     struct zwlr_virtual_pointer_v1 *virt_pointer =
         zwlr_virtual_pointer_manager_v1_create_virtual_pointer_with_output(
-            state->wl_virtual_pointer_mgr, state->wl_seat,
+            state->wl_virtual_pointer_mgr,
+            ((struct seat *)state->seats.next)->wl_seat,
             state->current_output->wl_output
         );
 
@@ -335,14 +370,9 @@ int main() {
         .wl_registry      = NULL,
         .wl_compositor    = NULL,
         .wl_shm           = NULL,
-        .wl_seat          = NULL,
-        .wl_keyboard      = NULL,
         .wl_layer_shell   = NULL,
         .wl_surface       = NULL,
         .wl_layer_surface = NULL,
-        .xkb_context      = NULL,
-        .xkb_keymap       = NULL,
-        .xkb_state        = NULL,
         .running          = true,
         .mode             = NULL,
         .result           = (struct rect){-1, -1, -1, -1},
@@ -350,6 +380,7 @@ int main() {
     };
 
     wl_list_init(&state.outputs);
+    wl_list_init(&state.seats);
 
     state.wl_display = wl_display_connect(NULL);
     if (state.wl_display == NULL) {
@@ -360,12 +391,6 @@ int main() {
     state.wl_registry = wl_display_get_registry(state.wl_display);
     if (state.wl_registry == NULL) {
         LOG_ERR("Failed to get Wayland registry.");
-        return 1;
-    }
-
-    state.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-    if (state.xkb_context == NULL) {
-        LOG_ERR("Could not create XKB context.");
         return 1;
     }
 
@@ -384,11 +409,6 @@ int main() {
 
     if (state.wl_layer_shell == NULL) {
         LOG_ERR("Failed to get zwlr_layer_shell_v1 object.");
-        return 1;
-    }
-
-    if (state.wl_seat == NULL) {
-        LOG_ERR("Failed to get Wayland seat object.");
         return 1;
     }
 
@@ -433,18 +453,7 @@ int main() {
         move_pointer(&state);
     }
 
-    if (state.wl_keyboard != NULL) {
-        wl_keyboard_destroy(state.wl_keyboard);
-    }
-
-    if (state.xkb_state != NULL) {
-        xkb_state_unref(state.xkb_state);
-    }
-    if (state.xkb_keymap != NULL) {
-        xkb_keymap_unref(state.xkb_keymap);
-    }
-    wl_seat_destroy(state.wl_seat);
-
+    free_seats(&state.seats);
     free_outputs(&state.outputs);
 
     zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
@@ -452,7 +461,6 @@ int main() {
     wl_compositor_destroy(state.wl_compositor);
     wl_registry_destroy(state.wl_registry);
     wl_display_disconnect(state.wl_display);
-    xkb_context_unref(state.xkb_context);
 
     return 0;
 }
