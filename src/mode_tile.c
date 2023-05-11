@@ -7,6 +7,8 @@
 #include <string.h>
 #include <xkbcommon/xkbcommon.h>
 
+#define MIN_SUB_AREA_SIZE (25 * 50)
+
 void tile_mode_enter(struct state *state) {
     state->mode = &tile_mode_interface;
 
@@ -25,7 +27,8 @@ void tile_mode_enter(struct state *state) {
 
     const int max_num_sub_areas = 8 * 8 * 8;
     const int area_size         = state->initial_area.w * state->initial_area.h;
-    const int sub_area_size     = area_size / max_num_sub_areas;
+    const int sub_area_size =
+        max(area_size / max_num_sub_areas, MIN_SUB_AREA_SIZE);
 
     struct tile_mode_state *ms = &state->mode_state.tile;
 
