@@ -6,6 +6,7 @@
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <wayland-client.h>
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
@@ -33,10 +34,10 @@ struct tile_mode_state {
 };
 
 struct rect {
-    uint32_t x;
-    uint32_t y;
-    uint32_t w;
-    uint32_t h;
+    int32_t x;
+    int32_t y;
+    int32_t w;
+    int32_t h;
 };
 
 struct bisect_mode_state {
@@ -45,9 +46,15 @@ struct bisect_mode_state {
 };
 
 struct output {
-    struct wl_list    link; // type: struct output
-    struct wl_output *wl_output;
-    int32_t           scale;
+    struct wl_list         link; // type: struct output
+    struct wl_output      *wl_output;
+    struct zxdg_output_v1 *xdg_output;
+    char                  *name;
+    int32_t                scale;
+    int32_t                width;
+    int32_t                height;
+    int32_t                x;
+    int32_t                y;
 };
 
 struct seat {
@@ -70,12 +77,14 @@ struct state {
     struct surface_buffer_pool              surface_buffer_pool;
     struct wl_surface                      *wl_surface;
     struct zwlr_layer_surface_v1           *wl_layer_surface;
+    struct zxdg_output_manager_v1          *xdg_output_manager;
     struct wl_list                          outputs;
     struct wl_list                          seats;
     struct output                          *current_output;
-    bool                                    running;
     uint32_t                                surface_height;
     uint32_t                                surface_width;
+    bool                                    running;
+    struct rect                             initial_area;
     char                   home_row_buffer[HOME_ROW_BUFFER_LEN];
     char                 **home_row;
     struct rect            result;

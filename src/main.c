@@ -4,8 +4,10 @@
 #include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
+#include "xdg-output-unstable-v1-client-protocol.h"
 
 #include <cairo/cairo.h>
+#include <getopt.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -214,7 +216,9 @@ static void free_outputs(struct wl_list *outputs) {
     struct output *tmp;
     wl_list_for_each_safe (output, tmp, outputs, link) {
         wl_output_destroy(output->wl_output);
+        zxdg_output_v1_destroy(output->xdg_output);
         wl_list_remove(&output->link);
+        free(output->name);
         free(output);
     }
 }
@@ -246,6 +250,51 @@ const static struct wl_output_listener output_listener = {
     .description = noop,
     .done        = noop,
 };
+
+static void handle_xdg_output_logical_position(
+    void *data, struct zxdg_output_v1 *xdg_output, int32_t x, int32_t y
+) {
+    struct output *output = data;
+    output->x             = x;
+    output->y             = y;
+}
+
+static void handle_xdg_output_logical_size(
+    void *data, struct zxdg_output_v1 *xdg_output, int32_t w, int32_t h
+) {
+    struct output *output = data;
+    output->width         = w;
+    output->height        = h;
+}
+
+static void handle_xdg_output_name(
+    void *data, struct zxdg_output_v1 *xdg_output, const char *name
+) {
+    struct output *output = data;
+    output->name          = strdup(name);
+}
+
+const static struct zxdg_output_v1_listener xdg_output_listener = {
+    .logical_position = handle_xdg_output_logical_position,
+    .logical_size     = handle_xdg_output_logical_size,
+    .done             = noop,
+    .name             = handle_xdg_output_name,
+    .description      = noop,
+};
+
+static void load_xdg_outputs(struct state *state) {
+    struct output *output;
+    wl_list_for_each (output, &state->outputs, link) {
+        output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
+            state->xdg_output_manager, output->wl_output
+        );
+        zxdg_output_v1_add_listener(
+            output->xdg_output, &xdg_output_listener, output
+        );
+    }
+
+    wl_display_roundtrip(state->wl_display);
+}
 
 static void handle_surface_enter(
     void *data, struct wl_surface *surface, struct wl_output *wl_output
@@ -302,6 +351,11 @@ static void handle_registry_global(
         wl_output_add_listener(output->wl_output, &output_listener, output);
         wl_list_insert(&state->outputs, &output->link);
 
+    } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
+        state->xdg_output_manager = wl_registry_bind(
+            registry, name, &zxdg_output_manager_v1_interface, 2
+        );
+
     } else if (strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name) == 0) {
         state->wl_virtual_pointer_mgr = wl_registry_bind(
             registry, name, &zwlr_virtual_pointer_manager_v1_interface, 2
@@ -356,7 +410,8 @@ static void move_pointer(struct state *state) {
     int y = state->result.y + state->result.h / 2;
 
     zwlr_virtual_pointer_v1_motion_absolute(
-        virt_pointer, 0, x, y, state->surface_width, state->surface_height
+        virt_pointer, 0, x, y, state->current_output->width,
+        state->current_output->height
     );
     zwlr_virtual_pointer_v1_frame(virt_pointer);
     wl_display_roundtrip(state->wl_display);
@@ -364,7 +419,21 @@ static void move_pointer(struct state *state) {
     zwlr_virtual_pointer_v1_destroy(virt_pointer);
 }
 
-int main() {
+static struct output *
+find_output_from_rect(struct state *state, struct rect *rect) {
+    struct output *output;
+    wl_list_for_each (output, &state->outputs, link) {
+        if (output->x <= rect->x && output->y <= rect->y &&
+            output->x + output->width > rect->x &&
+            output->y + output->height > rect->y) {
+            return output;
+        }
+    }
+
+    return NULL;
+}
+
+int main(int argc, char **argv) {
     struct state state = {
         .wl_display       = NULL,
         .wl_registry      = NULL,
@@ -376,8 +445,41 @@ int main() {
         .running          = true,
         .mode             = NULL,
         .result           = (struct rect){-1, -1, -1, -1},
+        .initial_area     = (struct rect){-1, -1, -1, -1},
         .home_row         = (char *[]){"", "", "", "", "", "", "", ""},
     };
+
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"restrict", required_argument, 0, 'r'},
+    };
+
+    int option_char  = 0;
+    int option_index = 0;
+    while ((option_char =
+                getopt_long(argc, argv, "hr:", long_options, &option_index)) !=
+           EOF) {
+        switch (option_char) {
+        case 'h':
+            // TODO
+            return 0;
+
+        case 'r':
+            if (sscanf(
+                    optarg, "%dx%d+%d+%d", &state.initial_area.w,
+                    &state.initial_area.h, &state.initial_area.x,
+                    &state.initial_area.y
+                ) != 4) {
+                LOG_ERR("Could not parse --restrict argument.");
+                return 1;
+            }
+            break;
+
+        default:
+            LOG_ERR("Unknown argument.");
+            return 1;
+        }
+    }
 
     wl_list_init(&state.outputs);
     wl_list_init(&state.seats);
@@ -417,12 +519,35 @@ int main() {
         return 1;
     }
 
+    if (state.xdg_output_manager == NULL) {
+        LOG_ERR("Could not load xdg_output_manager.");
+        return 1;
+    }
+
+    load_xdg_outputs(&state);
+
+    // This round trip should load the keymap which is needed to determine the
+    // home row keys.
+    wl_display_roundtrip(state.wl_display);
+
+    if (state.initial_area.w != -1) {
+        state.current_output =
+            find_output_from_rect(&state, &state.initial_area);
+
+        // The initial area's position should be relative to the output.
+        if (state.current_output != NULL) {
+            state.initial_area.x -= state.current_output->x;
+            state.initial_area.y -= state.current_output->y;
+        }
+    }
+
     surface_buffer_pool_init(&state.surface_buffer_pool);
 
     state.wl_surface = wl_compositor_create_surface(state.wl_compositor);
     wl_surface_add_listener(state.wl_surface, &surface_listener, &state);
     state.wl_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        state.wl_layer_shell, state.wl_surface, NULL,
+        state.wl_layer_shell, state.wl_surface,
+        state.current_output == NULL ? NULL : state.current_output->wl_output,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "wl-kbptr"
     );
     zwlr_layer_surface_v1_add_listener(

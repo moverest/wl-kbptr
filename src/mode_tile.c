@@ -16,21 +16,28 @@ void tile_mode_enter(struct state *state) {
             sizeof(state->mode_state.tile.area_selection[0])
     );
 
+    if (state->initial_area.w == -1) {
+        state->initial_area.x = 0;
+        state->initial_area.y = 0;
+        state->initial_area.w = state->surface_width;
+        state->initial_area.h = state->surface_height;
+    }
+
     const int max_num_sub_areas = 8 * 8 * 8;
-    const int area_size         = state->surface_width * state->surface_height;
+    const int area_size         = state->initial_area.w * state->initial_area.h;
     const int sub_area_size     = area_size / max_num_sub_areas;
 
     struct tile_mode_state *ms = &state->mode_state.tile;
 
     ms->sub_area_height     = sqrt(sub_area_size / 2.);
-    ms->sub_area_rows       = state->surface_height / ms->sub_area_height;
-    ms->sub_area_height_off = state->surface_height % ms->sub_area_rows;
-    ms->sub_area_height     = state->surface_height / ms->sub_area_rows;
+    ms->sub_area_rows       = state->initial_area.h / ms->sub_area_height;
+    ms->sub_area_height_off = state->initial_area.h % ms->sub_area_rows;
+    ms->sub_area_height     = state->initial_area.h / ms->sub_area_rows;
 
     ms->sub_area_width     = sqrt(sub_area_size * 2);
-    ms->sub_area_columns   = state->surface_width / ms->sub_area_width;
-    ms->sub_area_width_off = state->surface_width % ms->sub_area_columns;
-    ms->sub_area_width     = state->surface_width / ms->sub_area_columns;
+    ms->sub_area_columns   = state->initial_area.w / ms->sub_area_width;
+    ms->sub_area_width_off = state->initial_area.w % ms->sub_area_columns;
+    ms->sub_area_width     = state->initial_area.w / ms->sub_area_columns;
 }
 
 // `tile_mode_back` goes back in history. Returns true if there was something to
@@ -106,17 +113,18 @@ static int get_selected_area_idx(struct tile_mode_state *mode_state) {
     return idx;
 }
 
-static struct rect idx_to_rect(struct tile_mode_state *mode_state, int idx) {
+static struct rect
+idx_to_rect(struct tile_mode_state *mode_state, int idx, int x_off, int y_off) {
     int column = idx / mode_state->sub_area_rows;
     int row    = idx % mode_state->sub_area_rows;
 
     return (struct rect){
         .x = column * mode_state->sub_area_width +
-             min(column, mode_state->sub_area_width_off),
+             min(column, mode_state->sub_area_width_off) + x_off,
         .w = mode_state->sub_area_width +
              (column < mode_state->sub_area_width_off ? 1 : 0),
         .y = row * mode_state->sub_area_height +
-             min(row, mode_state->sub_area_height_off),
+             min(row, mode_state->sub_area_height_off) + y_off,
         .h = mode_state->sub_area_height +
              (row < mode_state->sub_area_height_off ? 1 : 0),
     };
@@ -144,7 +152,11 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 
                     if (i == 2) {
                         bisect_mode_enter(
-                            state, idx_to_rect(ms, get_selected_area_idx(ms))
+                            state,
+                            idx_to_rect(
+                                ms, get_selected_area_idx(ms),
+                                state->initial_area.x, state->initial_area.y
+                            )
                         );
                     }
                     return true;
@@ -167,6 +179,12 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
         cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
     );
     cairo_set_font_size(cairo, (int)(ms->sub_area_height / 2));
+
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cairo, .2, .2, .2, .3);
+    cairo_paint(cairo);
+
+    cairo_translate(cairo, state->initial_area.x, state->initial_area.y);
 
     for (int i = 0; i < ms->sub_area_columns; i++) {
         for (int j = 0; j < ms->sub_area_rows; j++) {
@@ -224,6 +242,8 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
             count++;
         }
     }
+
+    cairo_translate(cairo, -state->initial_area.x, -state->initial_area.y);
 }
 
 struct mode_interface tile_mode_interface = {
