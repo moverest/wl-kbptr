@@ -31,7 +31,8 @@ meson install -C build
 
 ```
 mode Mouse {
-    bindsym a mode default, exec 'wl-kbptr; swaymsg mode Mouse'
+    bindsym a mode default, exec 'wl-kbptr-sway-active-win; swaymsg mode Mouse'
+    bindsym Shift+a mode default, exec 'wl-kbptr; swaymsg mode Mouse'
 
     # Mouse move
     bindsym h seat seat0 cursor move -15 0
