@@ -102,15 +102,22 @@ static bool selectable_area(int idx, int num, char selection[]) {
     return true;
 }
 
+#define INCOMPLETE_AREA_SELECTION -1
+#define OUT_OF_RANGE_AREA_IDX     -2
+
 static int get_selected_area_idx(struct tile_mode_state *mode_state) {
     int idx  = 0;
     int base = 1;
     for (int i = 0; i < 3; i++) {
         if (mode_state->area_selection[i] == NO_AREA_SELECTION) {
-            return -1;
+            return INCOMPLETE_AREA_SELECTION;
         }
         idx  += base * mode_state->area_selection[i];
         base *= 8;
+    }
+
+    if (idx >= mode_state->sub_area_rows * mode_state->sub_area_columns) {
+        return OUT_OF_RANGE_AREA_IDX;
     }
 
     return idx;
@@ -153,13 +160,18 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
                 if (ms->area_selection[i] == NO_AREA_SELECTION) {
                     ms->area_selection[i] = matched_i;
 
-                    if (i == 2) {
+                    int area_idx = get_selected_area_idx(ms);
+                    if (area_idx == OUT_OF_RANGE_AREA_IDX) {
+                        ms->area_selection[i] = NO_AREA_SELECTION;
+                        return false;
+                    }
+
+                    if (area_idx != INCOMPLETE_AREA_SELECTION) {
                         bisect_mode_enter(
-                            state,
-                            idx_to_rect(
-                                ms, get_selected_area_idx(ms),
-                                state->initial_area.x, state->initial_area.y
-                            )
+                            state, idx_to_rect(
+                                       ms, area_idx, state->initial_area.x,
+                                       state->initial_area.y
+                                   )
                         );
                     }
                     return true;
