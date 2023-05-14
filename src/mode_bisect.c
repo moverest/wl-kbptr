@@ -350,6 +350,23 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_source_rgba(cairo, .2, .2, .2, .3);
     cairo_paint(cairo);
 
+    cairo_set_source_rgba(cairo, .2, .2, .2, .7);
+    cairo_set_line_width(cairo, 1);
+
+    cairo_rectangle(
+        cairo, state->initial_area.x + .5, state->initial_area.y + .5,
+        state->initial_area.w - 1, state->initial_area.h - 1
+    );
+    cairo_stroke(cairo);
+
+    for (int i = 0; i < mode_state->current; i++) {
+        struct rect *area = &mode_state->areas[i];
+        cairo_rectangle(
+            cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
+        );
+        cairo_stroke(cairo);
+    }
+
     if (mode_state->current < BISECT_MAX_HISTORY) {
         enum bisect_division division = determine_division(area);
         division_interfaces[division].render(division, state, cairo);

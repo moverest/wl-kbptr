@@ -201,6 +201,13 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
 
     cairo_translate(cairo, state->initial_area.x, state->initial_area.y);
 
+    cairo_set_source_rgba(cairo, .2, .2, .2, .7);
+    cairo_rectangle(
+        cairo, .5, .5, state->initial_area.w - 1, state->initial_area.h - 1
+    );
+    cairo_set_line_width(cairo, 1);
+    cairo_stroke(cairo);
+
     for (int i = 0; i < ms->sub_area_columns; i++) {
         for (int j = 0; j < ms->sub_area_rows; j++) {
             const int x =
@@ -219,12 +226,9 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
             cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
             if (selectable) {
                 cairo_set_source_rgba(cairo, 0, .2, 0, .3);
-            } else {
-                cairo_set_source_rgba(cairo, .2, .2, .2, .3);
-            }
-            cairo_rectangle(cairo, x, y, w, h);
-            cairo_fill(cairo);
-            if (selectable) {
+                cairo_rectangle(cairo, x, y, w, h);
+                cairo_fill(cairo);
+
                 cairo_set_source_rgba(cairo, 0, .3, 0, .7);
                 cairo_rectangle(cairo, x + .5, y + .5, w - 1, h - 1);
                 cairo_set_line_width(cairo, 1);
