@@ -53,11 +53,14 @@ static void load_home_row(
         0x26, // a
         0x27, // s
         0x28, // d
-        0x29, // u
+        0x29, // f
         0x2c, // j
         0x2d, // k
         0x2e, // l
         0x2f, // m
+        0x2a, // g
+        0x2b, // h
+        0x38, // b
     };
 
     struct xkb_state *xkb_state   = xkb_state_new(keymap);
@@ -416,6 +419,22 @@ static void move_pointer(struct state *state) {
     zwlr_virtual_pointer_v1_frame(virt_pointer);
     wl_display_roundtrip(state->wl_display);
 
+    if (state->click != CLICK_NONE) {
+        int btn = 271 + state->click;
+
+        zwlr_virtual_pointer_v1_button(
+            virt_pointer, 0, btn, WL_POINTER_BUTTON_STATE_PRESSED
+        );
+        zwlr_virtual_pointer_v1_frame(virt_pointer);
+        wl_display_roundtrip(state->wl_display);
+
+        zwlr_virtual_pointer_v1_button(
+            virt_pointer, 0, btn, WL_POINTER_BUTTON_STATE_RELEASED
+        );
+        zwlr_virtual_pointer_v1_frame(virt_pointer);
+        wl_display_roundtrip(state->wl_display);
+    }
+
     zwlr_virtual_pointer_v1_destroy(virt_pointer);
 }
 
@@ -446,7 +465,8 @@ int main(int argc, char **argv) {
         .mode             = NULL,
         .result           = (struct rect){-1, -1, -1, -1},
         .initial_area     = (struct rect){-1, -1, -1, -1},
-        .home_row         = (char *[]){"", "", "", "", "", "", "", ""},
+        .home_row = (char *[]){"", "", "", "", "", "", "", "", "", "", ""},
+        .click    = CLICK_NONE,
     };
 
     static struct option long_options[] = {

@@ -11,13 +11,24 @@
 #include <wayland-util.h>
 #include <xkbcommon/xkbcommon.h>
 
-#define NO_AREA_SELECTION   -1
-#define HOME_ROW_LEN        8
-#define HOME_ROW_BUFFER_LEN 128
+#define NO_AREA_SELECTION     -1
+#define HOME_ROW_LEN          8
+#define HOME_ROW_LEN_WITH_BTN 11
+#define HOME_ROW_BUFFER_LEN   128
+#define HOME_ROW_LEFT_CLICK   8
+#define HOME_ROW_RIGHT_CLICK  9
+#define HOME_ROW_MIDDLE_CLICK 10
 
 // This should cover a initial maximum area with a width and height of 65536
 // pixels.
 #define BISECT_MAX_HISTORY 16
+
+enum click {
+    CLICK_NONE = 0,
+    CLICK_LEFT_BTN,
+    CLICK_RIGHT_BTN,
+    CLICK_MIDDLE_BTN,
+};
 
 struct mode_interface;
 
@@ -93,6 +104,7 @@ struct state {
         struct tile_mode_state   tile;
         struct bisect_mode_state bisect;
     } mode_state;
+    enum click click;
 };
 
 #endif

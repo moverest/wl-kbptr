@@ -372,6 +372,7 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
         division_interfaces[division].render(division, state, cairo);
     }
 
+    cairo_set_line_width(cairo, 1);
     cairo_set_source_rgba(cairo, .7, .2, .2, .7);
     const int pointer_x = area->x + area->w / 2;
     const int pointer_y = area->y + area->h / 2;
@@ -424,12 +425,34 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 
         struct rect         *area     = &mode_state->areas[mode_state->current];
         enum bisect_division division = determine_division(area);
-        if (division == UNDIVIDABLE) {
+
+        int matched_i = find_str(state->home_row, HOME_ROW_LEN_WITH_BTN, text);
+        if (matched_i < 0) {
             return false;
         }
 
-        int matched_i = find_str(state->home_row, HOME_ROW_LEN, text);
-        if (matched_i < 0) {
+        if (matched_i >= HOME_ROW_LEN) {
+            switch (matched_i) {
+            case HOME_ROW_LEFT_CLICK:
+                state->click = CLICK_LEFT_BTN;
+                break;
+            case HOME_ROW_RIGHT_CLICK:
+                state->click = CLICK_RIGHT_BTN;
+                break;
+            case HOME_ROW_MIDDLE_CLICK:
+                state->click = CLICK_MIDDLE_BTN;
+                break;
+            }
+
+            memcpy(
+                &state->result, &mode_state->areas[mode_state->current],
+                sizeof(struct rect)
+            );
+            state->running = false;
+            return false;
+        }
+
+        if (division == UNDIVIDABLE) {
             return false;
         }
 
