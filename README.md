@@ -4,7 +4,7 @@
 
 ![demo](https://user-images.githubusercontent.com/19509728/235551237-c19a53ba-475f-4670-b9ec-2a84138094c9.gif)
 
-It works in two phases: the screen is first in mapped with three letter labels and then the selected area is refined by bisecting it. At any point the pointer can be moved at the center of current area.
+It works in two phases: the screen is first in mapped with three letter labels and then the selected area is refined by bisecting it. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`. A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively.
 
 Note that your compositor needs to support the [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) and [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) protocols.
 
