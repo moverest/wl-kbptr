@@ -26,6 +26,7 @@ executable(
     'src/mode_tile.c',
     'src/mode_bisect.c',
     'src/utils.c',
+    'src/config.c',
     protos_src,
   ],
   dependencies: [
