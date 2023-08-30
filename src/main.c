@@ -1,3 +1,4 @@
+#include "config.h"
 #include "log.h"
 #include "mode.h"
 #include "state.h"
@@ -65,7 +66,7 @@ static void load_home_row(
 
     struct xkb_state *xkb_state   = xkb_state_new(keymap);
     char             *buffer      = home_row_buffer;
-    size_t            buffer_size = 128;
+    size_t            buffer_size = HOME_ROW_BUFFER_LEN;
 
     for (int i = 0; i < sizeof(key_codes) / sizeof(key_codes[0]); i++) {
         xkb_keysym_t keysym =
@@ -85,8 +86,9 @@ static void load_home_row(
             exit(1);
         }
 
-        home_row[i] = buffer;
+        home_row[i]  = buffer;
         buffer      += char_len;
+        buffer_size -= char_len;
     }
 
     xkb_state_unref(xkb_state);
@@ -130,9 +132,12 @@ static void handle_keyboard_keymap(
         break;
     }
 
-    load_home_row(
-        seat->xkb_keymap, seat->state->home_row, seat->state->home_row_buffer
-    );
+    if (seat->state->config.general.home_row_keys == NULL) {
+        load_home_row(
+            seat->xkb_keymap, seat->state->home_row,
+            seat->state->home_row_buffer
+        );
+    }
     seat->xkb_state = xkb_state_new(seat->xkb_keymap);
 }
 
@@ -469,6 +474,10 @@ int main(int argc, char **argv) {
         .click    = CLICK_NONE,
     };
 
+    config_set_default(&state.config);
+    struct config_loader config_loader;
+    config_loader_init(&config_loader, &state.config);
+
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"restrict", required_argument, 0, 'r'},
@@ -477,8 +486,8 @@ int main(int argc, char **argv) {
     int option_char  = 0;
     int option_index = 0;
     while ((option_char =
-                getopt_long(argc, argv, "hr:", long_options, &option_index)) !=
-           EOF) {
+                getopt_long(argc, argv, "hr:o:", long_options, &option_index)
+           ) != EOF) {
         switch (option_char) {
         case 'h':
             // TODO
@@ -495,10 +504,20 @@ int main(int argc, char **argv) {
             }
             break;
 
+        case 'o':
+            if (config_loader_load_cli_param(&config_loader, optarg) != 0) {
+                return 1;
+            };
+            break;
+
         default:
             LOG_ERR("Unknown argument.");
             return 1;
         }
+    }
+
+    if (state.config.general.home_row_keys != NULL) {
+        state.home_row = state.config.general.home_row_keys;
     }
 
     wl_list_init(&state.outputs);
@@ -606,6 +625,8 @@ int main(int argc, char **argv) {
     wl_compositor_destroy(state.wl_compositor);
     wl_registry_destroy(state.wl_registry);
     wl_display_disconnect(state.wl_display);
+
+    config_free_values(&state.config);
 
     return 0;
 }

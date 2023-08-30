@@ -1,6 +1,7 @@
 #ifndef __SURFACE_STATE_H_INCLUDED__
 #define __SURFACE_STATE_H_INCLUDED__
 
+#include "config.h"
 #include "surface-buffer.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
@@ -79,6 +80,7 @@ struct seat {
 };
 
 struct state {
+    struct config                           config;
     struct wl_display                      *wl_display;
     struct wl_registry                     *wl_registry;
     struct wl_compositor                   *wl_compositor;
