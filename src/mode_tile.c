@@ -1,3 +1,4 @@
+#include "config.h"
 #include "mode.h"
 #include "state.h"
 #include "utils.h"
@@ -82,7 +83,7 @@ static void idx_to_label(
             unselected_part = true;
         }
 
-        curr_label = stpcpy(curr_label, home_row[idx % 8]);
+        curr_label  = stpcpy(curr_label, home_row[idx % 8]);
         idx        /= 8;
     }
 }
@@ -184,11 +185,11 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 }
 
 void tile_mode_render(struct state *state, cairo_t *cairo) {
-
-    char                    label_selected[32];
-    char                    label_unselected[32];
-    int                     count = 0;
-    struct tile_mode_state *ms    = &state->mode_state.tile;
+    struct mode_tile_config *config = &state->config.mode_tile;
+    char                     label_selected[32];
+    char                     label_unselected[32];
+    int                      count = 0;
+    struct tile_mode_state  *ms    = &state->mode_state.tile;
 
     cairo_select_font_face(
         cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
@@ -196,12 +197,12 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_font_size(cairo, (int)(ms->sub_area_height / 2));
 
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(cairo, .2, .2, .2, .3);
+    cairo_set_source_u32(cairo, config->unselectable_bg_color);
     cairo_paint(cairo);
 
     cairo_translate(cairo, state->initial_area.x, state->initial_area.y);
 
-    cairo_set_source_rgba(cairo, .2, .2, .2, .7);
+    cairo_set_source_u32(cairo, config->unselectable_bg_color);
     cairo_rectangle(
         cairo, .5, .5, state->initial_area.w - 1, state->initial_area.h - 1
     );
@@ -225,11 +226,11 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
 
             cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
             if (selectable) {
-                cairo_set_source_rgba(cairo, 0, .2, 0, .3);
+                cairo_set_source_u32(cairo, config->selectable_bg_color);
                 cairo_rectangle(cairo, x, y, w, h);
                 cairo_fill(cairo);
 
-                cairo_set_source_rgba(cairo, 0, .3, 0, .7);
+                cairo_set_source_u32(cairo, config->selectable_border_color);
                 cairo_rectangle(cairo, x + .5, y + .5, w - 1, h - 1);
                 cairo_set_line_width(cairo, 1);
                 cairo_stroke(cairo);
@@ -248,13 +249,13 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
                     cairo,
                     x + (w - te_selected.x_advance - te_unselected.x_advance) /
                             2,
-                    y + (int
-                        )((h + max(te_selected.height, te_unselected.height)) /
-                          2)
+                    y + (int)((h + max(te_selected.height, te_unselected.height)
+                              ) /
+                              2)
                 );
-                cairo_set_source_rgba(cairo, 1, .8, 0, .9);
+                cairo_set_source_u32(cairo, config->label_select_color);
                 cairo_show_text(cairo, label_selected);
-                cairo_set_source_rgba(cairo, 1, 1, 1, .9);
+                cairo_set_source_u32(cairo, config->label_color);
                 cairo_show_text(cairo, label_unselected);
             }
 
