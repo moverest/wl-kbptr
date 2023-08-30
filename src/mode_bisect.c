@@ -1,3 +1,4 @@
+#include "config.h"
 #include "mode.h"
 #include "state.h"
 #include "utils.h"
@@ -5,10 +6,7 @@
 #include <math.h>
 #include <string.h>
 
-#define LABEL_FONT_SIZE 20
-#define LABEL_PADDING   12
-#define DIVIDE_8_RATIO  1.8
-#define POINTER_SIZE    20
+#define DIVIDE_8_RATIO 1.8
 
 enum bisect_division {
     /*
@@ -86,15 +84,17 @@ struct division_interface {
     // `idx_to_sub_area` returns the sub-area indicated by the given index in
     // `rect` while also returning true. If the index does map to a sub-area,
     // `rect` is left unchanged and it returns false.
-    bool (*idx_to_sub_area
-    )(enum bisect_division, int idx, struct rect *current_area,
-      struct rect *new_area);
+    bool (*idx_to_sub_area)(
+        enum bisect_division, int idx, struct rect *current_area,
+        struct rect *new_area
+    );
 };
 
 static void division_4_or_8_render(
     enum bisect_division division, struct state *state, cairo_t *cairo
 ) {
-    struct rect *area =
+    struct mode_bisect_config *config = &state->config.mode_bisect;
+    struct rect               *area =
         &state->mode_state.bisect.areas[state->mode_state.bisect.current];
 
     bool divide_8 = division == DIVISION_8;
@@ -116,21 +116,19 @@ static void division_4_or_8_render(
             const int w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
             const int h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
 
-            if ((i + j) % 2 == 0) {
-                cairo_set_source_rgba(cairo, 0, .2, 0, .3);
-            } else {
-                cairo_set_source_rgba(cairo, 0, 0, .2, .3);
-            }
+            cairo_set_source_u32(
+                cairo, (i + j) % 2 == 0 ? config->even_area_bg_color
+                                        : config->odd_area_bg_color
+            );
             cairo_rectangle(cairo, x, y, w, h);
             cairo_fill(cairo);
 
             cairo_set_line_width(cairo, 1);
             cairo_rectangle(cairo, x + .5, y + .5, w - 1, h - 1);
-            if ((i + j) % 2 == 0) {
-                cairo_set_source_rgba(cairo, 0, .3, 0, .7);
-            } else {
-                cairo_set_source_rgba(cairo, 0, 0, .3, .7);
-            }
+            cairo_set_source_u32(
+                cairo, (i + j) % 2 == 0 ? config->even_area_border_color
+                                        : config->odd_area_border_color
+            );
             cairo_stroke(cairo);
         }
     }
@@ -138,8 +136,8 @@ static void division_4_or_8_render(
     cairo_select_font_face(
         cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
     );
-    cairo_set_font_size(cairo, LABEL_FONT_SIZE);
-    cairo_set_source_rgba(cairo, 1, 1, 1, .9);
+    cairo_set_font_size(cairo, config->label_font_size);
+    cairo_set_source_u32(cairo, config->label_color);
     char label[64];
 
     // Top label
@@ -159,7 +157,7 @@ static void division_4_or_8_render(
     cairo_text_extents(cairo, label, &te);
     cairo_move_to(
         cairo, area->x + (int)(area->w / 2) - (int)(te.width / 2),
-        area->y - LABEL_PADDING
+        area->y - config->label_padding
     );
     cairo_show_text(cairo, label);
 
@@ -179,7 +177,7 @@ static void division_4_or_8_render(
     cairo_text_extents(cairo, label, &te);
     cairo_move_to(
         cairo, area->x + (int)(area->w / 2) - (int)(te.width / 2),
-        area->y + area->h + te.height + LABEL_PADDING
+        area->y + area->h + te.height + config->label_padding
     );
     cairo_show_text(cairo, label);
 }
@@ -214,32 +212,35 @@ static bool division_4_or_8_idx_to_rect(
 static void division_horizontal_render(
     enum bisect_division division, struct state *state, cairo_t *cairo
 ) {
-    struct rect *area =
+    struct mode_bisect_config *config = &state->config.mode_bisect;
+    struct rect               *area =
         &state->mode_state.bisect.areas[state->mode_state.bisect.current];
 
-    cairo_set_source_rgba(cairo, 0, .3, 0, .7);
+    cairo_set_source_u32(cairo, config->even_area_border_color);
     cairo_set_line_width(cairo, 1);
     cairo_move_to(cairo, area->x + .5, area->y + .5);
     cairo_line_to(cairo, area->x + (int)(area->w / 2) - .5, area->y + .5);
     cairo_stroke(cairo);
 
-    cairo_set_source_rgba(cairo, 0, 0, .3, .7);
+    cairo_set_source_u32(cairo, config->odd_area_border_color);
     cairo_move_to(cairo, area->x + (int)(area->w / 2) + .5, area->y + .5);
     cairo_line_to(cairo, area->x + area->w + .5, area->y + .5);
     cairo_stroke(cairo);
 
-    cairo_set_source_rgba(cairo, 1, 1, 1, .9);
+    cairo_set_source_u32(cairo, config->label_color);
 
     cairo_text_extents_t te;
     cairo_text_extents(cairo, state->home_row[0], &te);
     cairo_move_to(
-        cairo, area->x - LABEL_PADDING - te.width, area->y + te.height / 2
+        cairo, area->x - config->label_padding - te.width,
+        area->y + te.height / 2
     );
     cairo_show_text(cairo, state->home_row[0]);
 
     cairo_text_extents(cairo, state->home_row[1], &te);
     cairo_move_to(
-        cairo, area->x + area->w + LABEL_PADDING, area->y + te.height / 2
+        cairo, area->x + area->w + config->label_padding,
+        area->y + te.height / 2
     );
     cairo_show_text(cairo, state->home_row[1]);
 }
@@ -262,31 +263,35 @@ static bool division_horizontal_idx_to_rect(
 static void division_vertical_render(
     enum bisect_division division, struct state *state, cairo_t *cairo
 ) {
-    struct rect *area =
+
+    struct mode_bisect_config *config = &state->config.mode_bisect;
+    struct rect               *area =
         &state->mode_state.bisect.areas[state->mode_state.bisect.current];
 
-    cairo_set_source_rgba(cairo, 0, .3, 0, .7);
+    cairo_set_source_u32(cairo, config->even_area_border_color);
     cairo_set_line_width(cairo, 1);
     cairo_move_to(cairo, area->x + .5, area->y + .5);
     cairo_line_to(cairo, area->x + .5, area->y - .5 + (int)(area->h / 2));
     cairo_stroke(cairo);
 
-    cairo_set_source_rgba(cairo, 0, 0, .3, .7);
+    cairo_set_source_u32(cairo, config->odd_area_border_color);
     cairo_move_to(cairo, area->x + .5, area->y + .5 + (int)(area->h / 2));
     cairo_line_to(cairo, area->x + .5, area->y + .5 + area->h);
     cairo_stroke(cairo);
 
-    cairo_set_source_rgba(cairo, 1, 1, 1, .9);
+    cairo_set_source_u32(cairo, config->label_color);
 
     cairo_text_extents_t te;
     cairo_text_extents(cairo, state->home_row[0], &te);
-    cairo_move_to(cairo, area->x - te.width / 2, area->y - LABEL_PADDING);
+    cairo_move_to(
+        cairo, area->x - te.width / 2, area->y - config->label_padding
+    );
     cairo_show_text(cairo, state->home_row[0]);
 
     cairo_text_extents(cairo, state->home_row[1], &te);
     cairo_move_to(
         cairo, area->x - te.width / 2,
-        area->y + area->h + LABEL_PADDING + te.height
+        area->y + area->h + config->label_padding + te.height
     );
     cairo_show_text(cairo, state->home_row[1]);
 }
@@ -309,12 +314,14 @@ static bool division_vertical_idx_to_rect(
 static void undividable_render(
     enum bisect_division division, struct state *state, cairo_t *cairo
 ) {
-    struct rect *area =
+    struct mode_bisect_config *config = &state->config.mode_bisect;
+    struct rect               *area =
         &state->mode_state.bisect.areas[state->mode_state.bisect.current];
 
-    cairo_set_source_rgba(cairo, .7, .2, .2, .7);
+    cairo_set_source_u32(cairo, config->pointer_color);
     cairo_arc(
-        cairo, area->x + .5, area->y + .5, POINTER_SIZE / 4., 0, 2 * M_PI
+        cairo, area->x + .5, area->y + .5, config->pointer_size / 4., 0,
+        2 * M_PI
     );
     cairo_set_line_width(cairo, 1);
     cairo_stroke(cairo);
@@ -343,14 +350,15 @@ static const struct division_interface division_interfaces[] = {
 };
 
 static void bisect_mode_render(struct state *state, cairo_t *cairo) {
-    struct bisect_mode_state *mode_state = &state->mode_state.bisect;
+    struct mode_bisect_config *config     = &state->config.mode_bisect;
+    struct bisect_mode_state  *mode_state = &state->mode_state.bisect;
     struct rect *area = &mode_state->areas[state->mode_state.bisect.current];
 
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(cairo, .2, .2, .2, .3);
+    cairo_set_source_u32(cairo, config->unselectable_bg_color);
     cairo_paint(cairo);
 
-    cairo_set_source_rgba(cairo, .2, .2, .2, .7);
+    cairo_set_source_u32(cairo, config->history_border_color);
     cairo_set_line_width(cairo, 1);
 
     cairo_rectangle(
@@ -373,21 +381,21 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     }
 
     cairo_set_line_width(cairo, 1);
-    cairo_set_source_rgba(cairo, .7, .2, .2, .7);
+    cairo_set_source_u32(cairo, config->pointer_color);
     const int pointer_x = area->x + area->w / 2;
     const int pointer_y = area->y + area->h / 2;
     cairo_move_to(
-        cairo, pointer_x + .5, pointer_y - (int)(POINTER_SIZE / 2) + .5
+        cairo, pointer_x + .5, pointer_y - (int)(config->pointer_size / 2) + .5
     );
     cairo_line_to(
-        cairo, pointer_x + .5, pointer_y + (int)(POINTER_SIZE / 2) + .5
+        cairo, pointer_x + .5, pointer_y + (int)(config->pointer_size / 2) + .5
     );
     cairo_stroke(cairo);
     cairo_move_to(
-        cairo, pointer_x - (int)(POINTER_SIZE / 2) + .5, pointer_y + .5
+        cairo, pointer_x - (int)(config->pointer_size / 2) + .5, pointer_y + .5
     );
     cairo_line_to(
-        cairo, pointer_x + (int)(POINTER_SIZE / 2) + .5, pointer_y + .5
+        cairo, pointer_x + (int)(config->pointer_size / 2) + .5, pointer_y + .5
     );
     cairo_stroke(cairo);
 }
