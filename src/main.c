@@ -7,6 +7,7 @@
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
+#include <bits/getopt_core.h>
 #include <cairo/cairo.h>
 #include <getopt.h>
 #include <math.h>
@@ -481,12 +482,14 @@ int main(int argc, char **argv) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"restrict", required_argument, 0, 'r'},
+        {"config", required_argument, 0, 'c'},
     };
 
-    int option_char  = 0;
-    int option_index = 0;
+    int   option_char     = 0;
+    int   option_index    = 0;
+    char *config_filename = NULL;
     while ((option_char =
-                getopt_long(argc, argv, "hr:o:", long_options, &option_index)
+                getopt_long(argc, argv, "hr:o:c:", long_options, &option_index)
            ) != EOF) {
         switch (option_char) {
         case 'h':
@@ -510,11 +513,25 @@ int main(int argc, char **argv) {
             };
             break;
 
+        case 'c':
+            config_filename = strdup(optarg);
+            break;
+
         default:
             LOG_ERR("Unknown argument.");
             return 1;
         }
     }
+
+	int err = config_loader_load_file(&config_loader, config_filename);
+	if (err) {
+		LOG_ERR("Failed to read configuration file.");
+		return 1;
+	}
+	if (config_filename != NULL) {
+		free(config_filename);
+		config_filename = NULL;
+	}
 
     if (state.config.general.home_row_keys != NULL) {
         state.home_row = state.config.general.home_row_keys;
