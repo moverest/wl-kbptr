@@ -366,3 +366,164 @@ void config_free_values(struct config *config) {
         }
     }
 }
+
+static const char *XDG_PATH_FMT = "%s/wl-kbptr/config";
+
+static FILE *open_config_file(char *file_name) {
+    FILE *f = NULL;
+
+    if (file_name != NULL) {
+        f = fopen(file_name, "r");
+        if (f == NULL) {
+            LOG_ERR("Could not open config file '%s'", file_name);
+            return NULL;
+        }
+
+		LOG_INFO("Loading config file '%s'", file_name);
+		return f;
+    }
+
+    char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+    if (xdg_config_home != NULL) {
+        int  path_len = snprintf(NULL, 0, XDG_PATH_FMT, xdg_config_home) + 1;
+        char file_path[path_len];
+        snprintf(file_path, path_len, XDG_PATH_FMT, xdg_config_home);
+
+		f = fopen(file_path, "r");
+		if (f == NULL) {
+			LOG_WARN("Could not open config file '%s'", file_path);
+			return NULL;
+		}
+
+		LOG_INFO("Loading config file '%s'", file_path);
+    }
+
+    return f;
+}
+
+static const char *WHITE_SPACES = "\r\t ";
+
+int config_loader_load_file(struct config_loader *loader, char *file_name) {
+    FILE *f = open_config_file(file_name);
+    if (f == NULL) {
+        return file_name == NULL ? 0 : 1;
+    }
+
+    char buf[256];
+    int  c = 0, i, err;
+
+    for (int line; c != EOF; line++) {
+        do {
+            c = getc(f);
+        } while (strchr(WHITE_SPACES, c) != NULL);
+
+        switch (c) {
+        // Comment
+        case '#':
+            do {
+                c = getc(f);
+            } while (c != '\n' && c != EOF);
+            break;
+
+        // Section
+        case '[':
+            for (i = 0; i < (sizeof(buf) - 1) && (c = getc(f)) != ']'; i++) {
+                if (c == EOF) {
+                    LOG_ERR(
+                        "Unexpected end of file. Section was not terminated."
+                    );
+                    goto err;
+                } else if (c == '\n') {
+                    LOG_ERR(
+                        "Unexpected end of line. Section was not terminated."
+                    );
+                    goto err;
+                }
+                buf[i] = c;
+            }
+
+            if (c != ']') {
+                LOG_ERR("Line is too long.");
+                goto err;
+            }
+
+            buf[i] = '\0';
+
+            do {
+                c = getc(f);
+                if (strchr(WHITE_SPACES, c) != NULL) {
+                    LOG_ERR(
+                        "Only whitespaces are allowed after a section's ending "
+                        "delimiter."
+                    );
+                    goto err;
+                }
+            } while (c != '\n' && c != EOF);
+
+            err = config_loader_enter_section(loader, buf) != 0;
+            if (err) {
+                goto err;
+            }
+            break;
+
+        // Empty line
+        case '\n':
+            break;
+
+        case EOF:
+            goto success;
+
+        // key=value
+        default:
+            buf[0] = c;
+            for (i = 1; i < (sizeof(buf) - 1) && (c = getc(f)) != '='; i++) {
+                if (c == EOF) {
+                    LOG_ERR("Unexpected end of file. Expected equal operator.");
+                    goto err;
+                } else if (c == '\n') {
+                    LOG_ERR("Unexpected end of line. Expected equal operator.");
+                    goto err;
+                }
+                buf[i] = c;
+            }
+
+            if (c != '=') {
+                LOG_ERR("Line is too long");
+                goto err;
+            }
+
+            buf[i++] = '\0';
+
+            char *value = &buf[i];
+            for (; i < (sizeof(buf)); i++) {
+                c = getc(f);
+                if (c == EOF || c == '\n') {
+                    break;
+                } else if (c == '\r') {
+                    continue;
+                }
+
+                buf[i] = c;
+            }
+
+            if (i == sizeof(buf)) {
+                LOG_ERR("Line is too long");
+            }
+
+            buf[i] = '\0';
+
+            err = config_loader_load_field(loader, buf, value);
+            if (err) {
+                goto err;
+            }
+        }
+    }
+
+success:
+    fclose(f);
+    return 0;
+
+err:
+    fclose(f);
+    return 1;
+}

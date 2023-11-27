@@ -2,6 +2,7 @@
 #define __SURFACE_CONFIG_H_INCLUDED__
 
 #include <stdint.h>
+#include <stdio.h>
 
 struct general_config {
     char **home_row_keys;
@@ -39,7 +40,7 @@ struct config {
 };
 
 /**
- * The `config_loader` structure stores necesarry states to set parse values.
+ * The `config_loader` structure stores needed states to set parse values.
  */
 struct config_loader {
     struct config *config;
@@ -84,5 +85,11 @@ int config_loader_load_field(
  * parameter value, e.g. `mode_bisect.label_color=#66666666`.
  */
 int config_loader_load_cli_param(struct config_loader *loader, char *value);
+
+/**
+ * `config_loader_load_file` loads configuration values from the given file or
+ * from one of the default locations (if `file_name` is NULL).
+ */
+int config_loader_load_file(struct config_loader *loader, char *file_name);
 
 #endif
