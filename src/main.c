@@ -621,8 +621,8 @@ int main(int argc, char **argv) {
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
-    wl_surface_destroy(state.wl_surface);
     zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
+    wl_surface_destroy(state.wl_surface);
 
     surface_buffer_pool_destroy(&state.surface_buffer_pool);
 
