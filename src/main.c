@@ -458,6 +458,16 @@ find_output_from_rect(struct state *state, struct rect *rect) {
     return NULL;
 }
 
+static void print_usage() {
+    puts("wl-kbptr [OPTION...]\n");
+
+    puts(" -h, --help          show this help");
+    puts(" --help-config       show help on configuration");
+    puts(" -c, --config=FILE   use given configuration file");
+    puts(" -r, --restrict=AREA restrict to given area (wxh+x+y)");
+    puts(" -o, --option        set configuration option");
+}
+
 int main(int argc, char **argv) {
     struct state state = {
         .wl_display       = NULL,
@@ -494,7 +504,7 @@ int main(int argc, char **argv) {
            ) != EOF) {
         switch (option_char) {
         case 'h':
-            // TODO
+            print_usage();
             return 0;
 
         case 'r':
