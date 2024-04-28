@@ -379,8 +379,8 @@ static FILE *open_config_file(char *file_name) {
             return NULL;
         }
 
-		LOG_INFO("Loading config file '%s'", file_name);
-		return f;
+        LOG_INFO("Loading config file '%s'", file_name);
+        return f;
     }
 
     char *xdg_config_home = getenv("XDG_CONFIG_HOME");
@@ -389,13 +389,13 @@ static FILE *open_config_file(char *file_name) {
         char file_path[path_len];
         snprintf(file_path, path_len, XDG_PATH_FMT, xdg_config_home);
 
-		f = fopen(file_path, "r");
-		if (f == NULL) {
-			LOG_WARN("Could not open config file '%s'", file_path);
-			return NULL;
-		}
+        f = fopen(file_path, "r");
+        if (f == NULL) {
+            LOG_WARN("Could not open config file '%s'", file_path);
+            return NULL;
+        }
 
-		LOG_INFO("Loading config file '%s'", file_path);
+        LOG_INFO("Loading config file '%s'", file_path);
     }
 
     return f;

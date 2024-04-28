@@ -523,15 +523,15 @@ int main(int argc, char **argv) {
         }
     }
 
-	int err = config_loader_load_file(&config_loader, config_filename);
-	if (err) {
-		LOG_ERR("Failed to read configuration file.");
-		return 1;
-	}
-	if (config_filename != NULL) {
-		free(config_filename);
-		config_filename = NULL;
-	}
+    int err = config_loader_load_file(&config_loader, config_filename);
+    if (err) {
+        LOG_ERR("Failed to read configuration file.");
+        return 1;
+    }
+    if (config_filename != NULL) {
+        free(config_filename);
+        config_filename = NULL;
+    }
 
     if (state.config.general.home_row_keys != NULL) {
         state.home_row = state.config.general.home_row_keys;

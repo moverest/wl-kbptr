@@ -345,8 +345,8 @@ static const struct division_interface division_interfaces[] = {
         {.render          = division_horizontal_render,
          .idx_to_sub_area = division_horizontal_idx_to_rect},
     [UNDIVIDABLE] =
-        {.render          = undividable_render,
-         .idx_to_sub_area = undividable_select_idx},
+        {.render = undividable_render, .idx_to_sub_area = undividable_select_idx
+        },
 };
 
 static void bisect_mode_render(struct state *state, cairo_t *cairo) {
