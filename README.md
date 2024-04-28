@@ -58,6 +58,10 @@ mode Mouse {
 bindsym $mod+g mode Mouse
 ```
 
+## Configuration
+
+`wl-kbptr` can be configured with a configuration file. See [`config.example`](./config.example) for an example and run `wl-kbptr --help-config` for help.
+
 ## Dependencies
 
 - [`xkbcommon`](https://xkbcommon.org)
