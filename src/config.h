@@ -47,6 +47,8 @@ struct config_loader {
     void          *curr_section_def;
 };
 
+void print_default_config();
+
 /**
  * `config_set_default` sets default values set in the configuration's
  * definitions.

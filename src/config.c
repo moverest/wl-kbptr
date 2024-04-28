@@ -232,6 +232,26 @@ static struct section_def section_defs[] = {
 };
 #pragma GCC diagnostic pop
 
+void print_default_config() {
+    puts("# wl-kbptr can be configured with a configuration file.");
+    puts("# The file location can be passed with the -C parameter.");
+    puts("# Othewise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will");
+    puts("# be loaded if it exits. Below is the default configuration.");
+
+    for (int i = 0; i < sizeof(section_defs) / sizeof(section_defs[0]); i++) {
+        struct section_def *section_def = &section_defs[i];
+
+        printf("\n[%s]\n", section_def->name);
+
+        for (struct field_def **field_def_ptr = section_def->fields;
+             *field_def_ptr != NULL; field_def_ptr++) {
+            struct field_def *field_def = *field_def_ptr;
+
+            printf("%s=%s\n", field_def->name, field_def->default_value);
+        }
+    }
+}
+
 void config_loader_init(struct config_loader *loader, struct config *config) {
     loader->config           = config;
     loader->curr_section_def = &section_defs[0];

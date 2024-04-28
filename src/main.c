@@ -481,6 +481,7 @@ int main(int argc, char **argv) {
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
+        {"help-config", no_argument, 0, 'H'},
         {"restrict", required_argument, 0, 'r'},
         {"config", required_argument, 0, 'c'},
     };
@@ -516,6 +517,10 @@ int main(int argc, char **argv) {
         case 'c':
             config_filename = strdup(optarg);
             break;
+
+        case 'H':
+            print_default_config();
+            return 0;
 
         default:
             LOG_ERR("Unknown argument.");
