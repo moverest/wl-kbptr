@@ -640,6 +640,7 @@ int main(int argc, char **argv) {
     wl_surface_destroy(state.wl_surface);
 
     surface_buffer_pool_destroy(&state.surface_buffer_pool);
+    wl_display_roundtrip(state.wl_display);
 
     if (state.result.x != -1) {
         printf(
