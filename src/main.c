@@ -7,10 +7,8 @@
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
-#include <bits/getopt_core.h>
 #include <cairo/cairo.h>
 #include <getopt.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
