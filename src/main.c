@@ -622,6 +622,7 @@ int main(int argc, char **argv) {
     zwlr_layer_surface_v1_add_listener(
         state.wl_layer_surface, &wl_layer_surface_listener, &state
     );
+    zwlr_layer_surface_v1_set_exclusive_zone(state.wl_layer_surface, -1);
     zwlr_layer_surface_v1_set_anchor(
         state.wl_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
                                     ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
