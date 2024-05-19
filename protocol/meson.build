@@ -18,8 +18,10 @@ wayland_scanner_header = generator(
 client_protocols = [
   wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
   wl_protocol_dir / 'unstable/xdg-output/xdg-output-unstable-v1.xml',
+  wl_protocol_dir / 'stable/viewporter/viewporter.xml',
   'wlr-layer-shell-unstable-v1.xml',
   'wlr-virtual-pointer-unstable-v1.xml',
+  'fractional-scale-v1.xml',
 ]
 
 protos_src = []

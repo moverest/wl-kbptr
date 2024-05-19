@@ -1,8 +1,10 @@
 #include "config.h"
+#include "fractional-scale-v1-client-protocol.h"
 #include "log.h"
 #include "mode.h"
 #include "state.h"
 #include "surface-buffer.h"
+#include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
@@ -20,11 +22,18 @@
 #include <xkbcommon/xkbcommon.h>
 
 static void send_frame(struct state *state) {
-    const int32_t scale =
-        state->current_output == NULL ? 1 : state->current_output->scale;
+    int32_t scale_120 = state->fractional_scale;
+    if (scale_120 == 0) {
+        // Falling back to the output scale if fractional scale is not received.
+        scale_120 =
+            (state->current_output == NULL ? 1 : state->current_output->scale) *
+            120;
+    }
+
     struct surface_buffer *surface_buffer = get_next_buffer(
         state->wl_shm, &state->surface_buffer_pool,
-        state->surface_width * scale, state->surface_height * scale
+        state->surface_width * scale_120 / 120,
+        state->surface_height * scale_120 / 120
     );
     if (surface_buffer == NULL) {
         return;
@@ -33,11 +42,15 @@ static void send_frame(struct state *state) {
 
     cairo_t *cairo = surface_buffer->cairo;
     cairo_identity_matrix(cairo);
-    cairo_scale(cairo, scale, scale);
+    cairo_scale(cairo, scale_120 / 120.0, scale_120 / 120.0);
     state->mode->render(state, cairo);
 
-    wl_surface_set_buffer_scale(state->wl_surface, scale);
+    wl_surface_set_buffer_scale(state->wl_surface, 1);
+
     wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
+    wp_viewport_set_destination(
+        state->wp_viewport, state->surface_width, state->surface_height
+    );
     wl_surface_damage(
         state->wl_surface, 0, 0, state->surface_width, state->surface_height
     );
@@ -367,6 +380,13 @@ static void handle_registry_global(
         state->wl_virtual_pointer_mgr = wl_registry_bind(
             registry, name, &zwlr_virtual_pointer_manager_v1_interface, 2
         );
+    } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
+        state->wp_viewporter =
+            wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
+    } else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0) {
+        state->fractional_scale_mgr = wl_registry_bind(
+            registry, name, &wp_fractional_scale_manager_v1_interface, 1
+        );
     }
 }
 
@@ -401,6 +421,17 @@ static void handle_layer_surface_closed(
 const struct zwlr_layer_surface_v1_listener wl_layer_surface_listener = {
     .configure = handle_layer_surface_configure,
     .closed    = handle_layer_surface_closed,
+};
+
+static void fractional_scale_preferred(
+    void *data, struct wp_fractional_scale_v1 *fractional_scale, uint32_t scale
+) {
+    struct state *state     = data;
+    state->fractional_scale = scale;
+}
+
+const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
+    .preferred_scale = fractional_scale_preferred,
 };
 
 static void move_pointer(struct state *state) {
@@ -468,17 +499,20 @@ static void print_usage() {
 
 int main(int argc, char **argv) {
     struct state state = {
-        .wl_display       = NULL,
-        .wl_registry      = NULL,
-        .wl_compositor    = NULL,
-        .wl_shm           = NULL,
-        .wl_layer_shell   = NULL,
-        .wl_surface       = NULL,
-        .wl_layer_surface = NULL,
-        .running          = true,
-        .mode             = NULL,
-        .result           = (struct rect){-1, -1, -1, -1},
-        .initial_area     = (struct rect){-1, -1, -1, -1},
+        .wl_display           = NULL,
+        .wl_registry          = NULL,
+        .wl_compositor        = NULL,
+        .wl_shm               = NULL,
+        .wl_layer_shell       = NULL,
+        .wl_surface           = NULL,
+        .wl_layer_surface     = NULL,
+        .wp_viewporter        = NULL,
+        .fractional_scale_mgr = NULL,
+        .running              = true,
+        .mode                 = NULL,
+        .fractional_scale     = 0,
+        .result               = (struct rect){-1, -1, -1, -1},
+        .initial_area         = (struct rect){-1, -1, -1, -1},
         .home_row = (char *[]){"", "", "", "", "", "", "", "", "", "", ""},
         .click    = CLICK_NONE,
     };
@@ -593,6 +627,11 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (state.wp_viewporter == NULL) {
+        LOG_ERR("Could not load wp_viewporter object.");
+        return 1;
+    }
+
     load_xdg_outputs(&state);
 
     // This round trip should load the keymap which is needed to determine the
@@ -632,6 +671,20 @@ int main(int argc, char **argv) {
     zwlr_layer_surface_v1_set_keyboard_interactivity(
         state.wl_layer_surface, true
     );
+
+    struct wp_fractional_scale_v1 *fractional_scale = NULL;
+    if (state.fractional_scale_mgr) {
+        fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
+            state.fractional_scale_mgr, state.wl_surface
+        );
+        wp_fractional_scale_v1_add_listener(
+            fractional_scale, &fractional_scale_listener, &state
+        );
+    }
+
+    state.wp_viewport =
+        wp_viewporter_get_viewport(state.wp_viewporter, state.wl_surface);
+
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
@@ -652,10 +705,17 @@ int main(int argc, char **argv) {
     free_seats(&state.seats);
     free_outputs(&state.outputs);
 
-    zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
+    if (state.fractional_scale_mgr) {
+        wp_fractional_scale_v1_destroy(fractional_scale);
+        wp_fractional_scale_manager_v1_destroy(state.fractional_scale_mgr);
+    }
+
+    wp_viewporter_destroy(state.wp_viewporter);
     wl_shm_destroy(state.wl_shm);
     wl_compositor_destroy(state.wl_compositor);
     wl_registry_destroy(state.wl_registry);
+    zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
+
     wl_display_disconnect(state.wl_display);
 
     config_free_values(&state.config);

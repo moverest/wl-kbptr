@@ -2,7 +2,9 @@
 #define __SURFACE_STATE_H_INCLUDED__
 
 #include "config.h"
+#include "fractional-scale-v1-client-protocol.h"
 #include "surface-buffer.h"
+#include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 
@@ -87,6 +89,9 @@ struct state {
     struct wl_shm                          *wl_shm;
     struct zwlr_layer_shell_v1             *wl_layer_shell;
     struct zwlr_virtual_pointer_manager_v1 *wl_virtual_pointer_mgr;
+    struct wp_viewporter                   *wp_viewporter;
+    struct wp_viewport                     *wp_viewport;
+    struct wp_fractional_scale_manager_v1  *fractional_scale_mgr;
     struct surface_buffer_pool              surface_buffer_pool;
     struct wl_surface                      *wl_surface;
     struct zwlr_layer_surface_v1           *wl_layer_surface;
@@ -96,6 +101,7 @@ struct state {
     struct output                          *current_output;
     uint32_t                                surface_height;
     uint32_t                                surface_width;
+    uint32_t                                fractional_scale; // scale / 120
     bool                                    running;
     struct rect                             initial_area;
     char                   home_row_buffer[HOME_ROW_BUFFER_LEN];
