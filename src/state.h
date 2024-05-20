@@ -1,5 +1,5 @@
-#ifndef __SURFACE_STATE_H_INCLUDED__
-#define __SURFACE_STATE_H_INCLUDED__
+#ifndef __STATE_H_INCLUDED__
+#define __STATE_H_INCLUDED__
 
 #include "config.h"
 #include "fractional-scale-v1-client-protocol.h"

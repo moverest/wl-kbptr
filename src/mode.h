@@ -1,5 +1,5 @@
-#ifndef __SURFACE_MODE_H_INCLUDED__
-#define __SURFACE_MODE_H_INCLUDED__
+#ifndef __MODE_H_INCLUDED__
+#define __MODE_H_INCLUDED__
 
 #include "state.h"
 

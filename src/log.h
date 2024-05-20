@@ -1,5 +1,5 @@
-#ifndef __SURFACE_LOG_H_INCLUDED__
-#define __SURFACE_LOG_H_INCLUDED__
+#ifndef __LOG_H_INCLUDED__
+#define __LOG_H_INCLUDED__
 
 #include <stdio.h>
 

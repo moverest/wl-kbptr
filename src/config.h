@@ -1,5 +1,5 @@
-#ifndef __SURFACE_CONFIG_H_INCLUDED__
-#define __SURFACE_CONFIG_H_INCLUDED__
+#ifndef __CONFIG_H_INCLUDED__
+#define __CONFIG_H_INCLUDED__
 
 #include <stdint.h>
 #include <stdio.h>
