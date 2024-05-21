@@ -1,4 +1,4 @@
-#include "surface-buffer.h"
+#include "surface_buffer.h"
 
 #include "log.h"
 

@@ -3,7 +3,7 @@
 #include "log.h"
 #include "mode.h"
 #include "state.h"
-#include "surface-buffer.h"
+#include "surface_buffer.h"
 #include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"

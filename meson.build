@@ -22,7 +22,7 @@ executable(
   'wl-kbptr',
   [
     'src/main.c',
-    'src/surface-buffer.c',
+    'src/surface_buffer.c',
     'src/mode_tile.c',
     'src/mode_bisect.c',
     'src/utils.c',
