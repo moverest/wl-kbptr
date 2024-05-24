@@ -33,13 +33,19 @@ void tile_mode_enter(struct state *state) {
 
     struct tile_mode_state *ms = &state->mode_state.tile;
 
-    ms->sub_area_height     = sqrt(sub_area_size / 2.);
-    ms->sub_area_rows       = state->initial_area.h / ms->sub_area_height;
+    ms->sub_area_height = sqrt(sub_area_size / 2.);
+    ms->sub_area_rows   = state->initial_area.h / ms->sub_area_height;
+    if (ms->sub_area_rows == 0) {
+        ms->sub_area_rows = 1;
+    }
     ms->sub_area_height_off = state->initial_area.h % ms->sub_area_rows;
     ms->sub_area_height     = state->initial_area.h / ms->sub_area_rows;
 
-    ms->sub_area_width     = sqrt(sub_area_size * 2);
-    ms->sub_area_columns   = state->initial_area.w / ms->sub_area_width;
+    ms->sub_area_width   = sqrt(sub_area_size * 2);
+    ms->sub_area_columns = state->initial_area.w / ms->sub_area_width;
+    if (ms->sub_area_columns == 0) {
+        ms->sub_area_columns = 1;
+    }
     ms->sub_area_width_off = state->initial_area.w % ms->sub_area_columns;
     ms->sub_area_width     = state->initial_area.w / ms->sub_area_columns;
 }
