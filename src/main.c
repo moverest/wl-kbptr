@@ -533,6 +533,9 @@ static void print_usage() {
     puts(" -r, --restrict=AREA restrict to given area (wxh+x+y)");
     puts(" -o, --option        set configuration option");
     puts(" -O, --output        specify display output to use");
+    puts(
+        " -p, --print-only    only print the requested mouse movement and click"
+    );
 }
 
 int main(int argc, char **argv) {
@@ -565,14 +568,16 @@ int main(int argc, char **argv) {
         {"restrict", required_argument, 0, 'r'},
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
+        {"only-print", no_argument, 0, 'p'},
     };
 
     int   option_char          = 0;
     int   option_index         = 0;
     char *config_filename      = NULL;
     char *selected_output_name = NULL;
+    bool  only_print           = false;
     while ((option_char = getopt_long(
-                argc, argv, "hr:o:c:O:R", long_options, &option_index
+                argc, argv, "hr:o:c:O:Rp", long_options, &option_index
             )) != EOF) {
         switch (option_char) {
         case 'h':
@@ -606,6 +611,10 @@ int main(int argc, char **argv) {
 
         case 'O':
             selected_output_name = strdup(optarg);
+            break;
+
+        case 'p':
+            only_print = true;
             break;
 
         default:
@@ -753,7 +762,9 @@ int main(int argc, char **argv) {
 
     if (state.result.x != -1) {
         print_result(&state);
-        move_pointer(&state);
+        if (!only_print) {
+            move_pointer(&state);
+        }
     }
 
     free_seats(&state.seats);
