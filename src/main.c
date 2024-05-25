@@ -487,6 +487,17 @@ find_output_from_rect(struct state *state, struct rect *rect) {
     return NULL;
 }
 
+static struct output *find_output_by_name(struct state *state, char *name) {
+    struct output *output;
+    wl_list_for_each (output, &state->outputs, link) {
+        if (strcmp(output->name, name) == 0) {
+            return output;
+        }
+    }
+
+    return NULL;
+}
+
 static void print_usage() {
     puts("wl-kbptr [OPTION...]\n");
 
@@ -495,6 +506,7 @@ static void print_usage() {
     puts(" -c, --config=FILE   use given configuration file");
     puts(" -r, --restrict=AREA restrict to given area (wxh+x+y)");
     puts(" -o, --option        set configuration option");
+    puts(" -O, --output        specify display output to use");
 }
 
 int main(int argc, char **argv) {
@@ -526,14 +538,16 @@ int main(int argc, char **argv) {
         {"help-config", no_argument, 0, 'H'},
         {"restrict", required_argument, 0, 'r'},
         {"config", required_argument, 0, 'c'},
+        {"output", required_argument, 0, 'O'},
     };
 
-    int   option_char     = 0;
-    int   option_index    = 0;
-    char *config_filename = NULL;
-    while ((option_char =
-                getopt_long(argc, argv, "hr:o:c:", long_options, &option_index)
-           ) != EOF) {
+    int   option_char          = 0;
+    int   option_index         = 0;
+    char *config_filename      = NULL;
+    char *selected_output_name = NULL;
+    while ((option_char = getopt_long(
+                argc, argv, "hr:o:c:O:R", long_options, &option_index
+            )) != EOF) {
         switch (option_char) {
         case 'h':
             print_usage();
@@ -563,6 +577,10 @@ int main(int argc, char **argv) {
         case 'H':
             print_default_config();
             return 0;
+
+        case 'O':
+            selected_output_name = strdup(optarg);
+            break;
 
         default:
             LOG_ERR("Unknown argument.");
@@ -638,15 +656,28 @@ int main(int argc, char **argv) {
     // home row keys.
     wl_display_roundtrip(state.wl_display);
 
-    if (state.initial_area.w != -1) {
+    if (selected_output_name) {
+        state.current_output =
+            find_output_by_name(&state, selected_output_name);
+
+        if (!state.current_output) {
+            LOG_ERR("Could not find output '%s'.", selected_output_name);
+            return 1;
+        }
+
+        free(selected_output_name);
+        selected_output_name = NULL;
+    } else if (state.initial_area.w != -1) {
         state.current_output =
             find_output_from_rect(&state, &state.initial_area);
 
-        // The initial area's position should be relative to the output.
-        if (state.current_output != NULL) {
-            state.initial_area.x -= state.current_output->x;
-            state.initial_area.y -= state.current_output->y;
+        if (!state.current_output) {
+            LOG_ERR("Could not find output containing given area.");
+            return 1;
         }
+
+        state.initial_area.x -= state.current_output->x;
+        state.initial_area.y -= state.current_output->y;
     }
 
     surface_buffer_pool_init(&state.surface_buffer_pool);
