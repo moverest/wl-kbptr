@@ -1,4 +1,5 @@
 #include "config.h"
+#include "log.h"
 #include "mode.h"
 #include "state.h"
 #include "utils.h"
@@ -24,6 +25,37 @@ void tile_mode_enter(struct state *state) {
         state->initial_area.y = 0;
         state->initial_area.w = state->surface_width;
         state->initial_area.h = state->surface_height;
+    } else {
+        if (state->initial_area.x < 0) {
+            state->initial_area.w += state->initial_area.x;
+            state->initial_area.x  = 0;
+        }
+
+        if (state->initial_area.y < 0) {
+            state->initial_area.h += state->initial_area.y;
+            state->initial_area.y  = 0;
+        }
+
+        if (state->initial_area.w + state->initial_area.x >
+            state->current_output->width) {
+            state->initial_area.w =
+                state->current_output->width - state->initial_area.x;
+        }
+
+        if (state->initial_area.h + state->initial_area.y >
+            state->current_output->height) {
+            state->initial_area.h =
+                state->current_output->height - state->initial_area.y;
+        }
+    }
+
+    if (state->initial_area.w <= 0 || state->initial_area.h <= 0) {
+        state->running = false;
+        LOG_ERR(
+            "Initial area (%dx%d) is too small.", state->initial_area.w,
+            state->initial_area.h
+        );
+        return;
     }
 
     const int max_num_sub_areas = 8 * 8 * 8;

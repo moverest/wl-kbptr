@@ -408,7 +408,10 @@ static void handle_layer_surface_configure(
         tile_mode_enter(state);
     }
 
-    send_frame(state);
+    if (state->running) {
+        // We might fail upon entering the mode above.
+        send_frame(state);
+    }
 }
 
 static void handle_layer_surface_closed(
