@@ -501,6 +501,29 @@ static struct output *find_output_by_name(struct state *state, char *name) {
     return NULL;
 }
 
+static void print_result(struct state *state) {
+    char click;
+    switch (state->click) {
+    case CLICK_LEFT_BTN:
+        click = 'l';
+        break;
+    case CLICK_MIDDLE_BTN:
+        click = 'm';
+        break;
+    case CLICK_RIGHT_BTN:
+        click = 'r';
+        break;
+    case CLICK_NONE:
+        click = 'n';
+    }
+
+    printf(
+        "%dx%d+%d+%d +%d+%d %c\n", state->result.w, state->result.h,
+        state->result.x, state->result.y, state->current_output->x,
+        state->current_output->y, click
+    );
+}
+
 static void print_usage() {
     puts("wl-kbptr [OPTION...]\n");
 
@@ -729,10 +752,7 @@ int main(int argc, char **argv) {
     wl_display_roundtrip(state.wl_display);
 
     if (state.result.x != -1) {
-        printf(
-            "%dx%d+%d+%d\n", state.result.w, state.result.h, state.result.x,
-            state.result.y
-        );
+        print_result(&state);
         move_pointer(&state);
     }
 
