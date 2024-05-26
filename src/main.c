@@ -670,7 +670,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (state.wl_virtual_pointer_mgr == NULL) {
+    if (state.wl_virtual_pointer_mgr == NULL && !only_print) {
         LOG_ERR("Could not load wlr_virtual_pointer_manager_v1 object.");
         return 1;
     }
