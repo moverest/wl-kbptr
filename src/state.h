@@ -45,6 +45,7 @@ struct tile_mode_state {
     int sub_area_height_off;
 
     char area_selection[3];
+    char label_length;
 };
 
 struct rect {

@@ -11,6 +11,17 @@
 
 #define MIN_SUB_AREA_SIZE (25 * 50)
 
+static char determine_label_length(struct tile_mode_state *ms) {
+    int areas = ms->sub_area_columns * ms->sub_area_rows;
+    if (areas <= 8) {
+        return 1;
+    } else if (areas <= 8 * 8) {
+        return 2;
+    } else {
+        return 3;
+    }
+}
+
 void tile_mode_enter(struct state *state) {
     state->mode = &tile_mode_interface;
 
@@ -80,13 +91,16 @@ void tile_mode_enter(struct state *state) {
     }
     ms->sub_area_width_off = state->initial_area.w % ms->sub_area_columns;
     ms->sub_area_width     = state->initial_area.w / ms->sub_area_columns;
+
+    ms->label_length = determine_label_length(ms);
 }
 
 // `tile_mode_back` goes back in history. Returns true if there was something to
 // go back to.
 static bool tile_mode_back(struct tile_mode_state *mode_state) {
     int i;
-    for (i = 0; i < 3 && mode_state->area_selection[i] != NO_AREA_SELECTION;
+    for (i = 0; i < mode_state->label_length &&
+                mode_state->area_selection[i] != NO_AREA_SELECTION;
          i++) {
         ;
     }
@@ -147,7 +161,7 @@ static bool selectable_area(int idx, int num, char selection[]) {
 static int get_selected_area_idx(struct tile_mode_state *mode_state) {
     int idx  = 0;
     int base = 1;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < mode_state->label_length; i++) {
         if (mode_state->area_selection[i] == NO_AREA_SELECTION) {
             return INCOMPLETE_AREA_SELECTION;
         }
@@ -259,7 +273,7 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
                 ms->sub_area_height + (j < ms->sub_area_height_off ? 1 : 0);
 
             const bool selectable = selectable_area(
-                count, 3, state->mode_state.tile.area_selection
+                count, ms->label_length, state->mode_state.tile.area_selection
             );
 
             cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
@@ -274,8 +288,9 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
                 cairo_stroke(cairo);
 
                 idx_to_label(
-                    count, 3, state->mode_state.tile.area_selection,
-                    state->home_row, label_selected, label_unselected
+                    count, ms->label_length,
+                    state->mode_state.tile.area_selection, state->home_row,
+                    label_selected, label_unselected
                 );
 
                 cairo_text_extents_t te_selected, te_unselected;
