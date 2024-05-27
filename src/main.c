@@ -656,12 +656,12 @@ int main(int argc, char **argv) {
     wl_display_roundtrip(state.wl_display);
 
     if (state.wl_compositor == NULL) {
-        LOG_ERR("Failed to get Wayland compositor object.");
+        LOG_ERR("Failed to get wl_compositor object.");
         return 1;
     }
 
     if (state.wl_shm == NULL) {
-        LOG_ERR("Failed to get Wayland share memory object.");
+        LOG_ERR("Failed to get wl_shm object.");
         return 1;
     }
 
@@ -671,17 +671,17 @@ int main(int argc, char **argv) {
     }
 
     if (state.wl_virtual_pointer_mgr == NULL && !only_print) {
-        LOG_ERR("Could not load wlr_virtual_pointer_manager_v1 object.");
+        LOG_ERR("Failed to get wlr_virtual_pointer_manager_v1 object.");
         return 1;
     }
 
     if (state.xdg_output_manager == NULL) {
-        LOG_ERR("Could not load xdg_output_manager.");
+        LOG_ERR("Failed to get xdg_output_manager object.");
         return 1;
     }
 
     if (state.wp_viewporter == NULL) {
-        LOG_ERR("Could not load wp_viewporter object.");
+        LOG_ERR("Failed to get wp_viewporter object.");
         return 1;
     }
 
