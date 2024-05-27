@@ -137,7 +137,7 @@ struct surface_buffer *get_next_buffer(
     }
 
     if (buffer == NULL) {
-        LOG_ERR("Could not find a next buffer to use.");
+        LOG_WARN("All surface buffers are busy.");
         return NULL;
     }
 
