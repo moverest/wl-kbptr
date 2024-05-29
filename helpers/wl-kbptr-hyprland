@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import subprocess
+import re
+
+
+def main():
+    p = subprocess.run(["wl-kbptr", "--only-print"], capture_output=True)
+    out = p.stdout.decode()
+    print(out)
+
+    m = re.match(
+        r"^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+) \+([0-9]+)\+([0-9]+) ([rlmn])", out
+    )
+
+    w = int(m[1])
+    h = int(m[2])
+    x = int(m[3])
+    y = int(m[4])
+    out_x = int(m[5])
+    out_y = int(m[6])
+    action = m[7]
+
+    mouse_x = w // 2 + x + out_x
+    mouse_y = h // 2 + y + out_y
+
+    subprocess.run(["hyprctl", "dispatch", "movecursor", str(mouse_x), str(mouse_y)])
+
+
+if __name__ == "__main__":
+    main()
