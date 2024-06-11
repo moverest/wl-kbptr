@@ -34,6 +34,7 @@ executable(
     xkbcommon,
     cairo,
     math,
+    wayland_client,
   ],
   install: true,
 )
