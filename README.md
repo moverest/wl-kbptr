@@ -10,9 +10,24 @@ Note that your compositor needs to support the [`wlr-layer-shell-unstable-v1`](h
 
 ## Installation
 
+### Arch Linux
+
 If you are using Arch Linux, you can install the [`wl-kbptr` AUR package](https://aur.archlinux.org/packages/wl-kbptr).
 
-Otherwise, you can build it with:
+You can build and install the package with:
+
+```bash
+curl 'https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=wl-kbptr' -O PKGBUILD
+makepkg -si
+```
+
+### NixOS
+
+If you are using NixOS, you can install the [`wl-kbptr` package](https://search.nixos.org/packages?query=wl-kbptr). Nix can also be used to install `wl-kbptr` on other distributions.
+
+### From sources
+
+You can build from sources with:
 
 ```bash
 meson build
