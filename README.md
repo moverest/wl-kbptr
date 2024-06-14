@@ -25,6 +25,16 @@ makepkg -si
 
 If you are using NixOS, you can install the [`wl-kbptr` package](https://search.nixos.org/packages?query=wl-kbptr). Nix can also be used to install `wl-kbptr` on other distributions.
 
+### Chimera Linux
+
+If you are using Chimera Linux, you can install the [`wl-kbptr` package](https://pkgs.chimera-linux.org/package/current/user/x86_64/wl-kbptr) which is available in the [user repository](https://chimera-linux.org/docs/apk#repositories).
+
+```bash
+apk add chimera-repo-user
+apk update
+apk add wl-kbptr
+```
+
 ### From sources
 
 You can build from sources with:
