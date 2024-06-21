@@ -120,7 +120,7 @@ void tile_mode_reenter(struct state *state) {
 }
 
 static void idx_to_label(
-    int idx, int num, char *selection, char **home_row, char *label_selected,
+    int idx, int num, int8_t *selection, char **home_row, char *label_selected,
     char *label_unselected
 ) {
     label_selected[0]   = 0;
@@ -140,7 +140,7 @@ static void idx_to_label(
     }
 }
 
-static bool selectable_area(int idx, int num, char selection[]) {
+static bool selectable_area(int idx, int num, int8_t selection[]) {
     for (int i = 0; i < num; i++) {
         if (selection[i] == NO_AREA_SELECTION) {
             return true;
