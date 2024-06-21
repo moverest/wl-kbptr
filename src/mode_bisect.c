@@ -134,7 +134,8 @@ static void division_4_or_8_render(
     }
 
     cairo_select_font_face(
-        cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
+        cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
+        CAIRO_FONT_WEIGHT_NORMAL
     );
     cairo_set_font_size(cairo, config->label_font_size);
     cairo_set_source_u32(cairo, config->label_color);

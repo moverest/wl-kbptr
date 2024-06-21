@@ -244,7 +244,8 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
     struct tile_mode_state  *ms    = &state->mode_state.tile;
 
     cairo_select_font_face(
-        cairo, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL
+        cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
+        CAIRO_FONT_WEIGHT_NORMAL
     );
     cairo_set_font_size(cairo, (int)(ms->sub_area_height / 2));
 

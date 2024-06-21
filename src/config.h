@@ -14,11 +14,13 @@ struct mode_tile_config {
     uint32_t unselectable_bg_color;
     uint32_t selectable_bg_color;
     uint32_t selectable_border_color;
+    char    *label_font_family;
 };
 
 struct mode_bisect_config {
     uint32_t label_color;
     double   label_font_size;
+    char    *label_font_family;
     double   label_padding;
 
     double  pointer_size;

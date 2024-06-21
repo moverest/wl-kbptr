@@ -154,6 +154,11 @@ err:
     return 1;
 }
 
+static int parse_str(void *dest, char *value) {
+    *((char **)dest) = strdup(value);
+    return 0;
+}
+
 static void free_home_row_keys(void *field_value) {
     char ***home_row_keys_ptr = field_value;
     if (*home_row_keys_ptr == NULL) {
@@ -164,6 +169,10 @@ static void free_home_row_keys(void *field_value) {
     free(*home_row_keys_ptr);
 
     *home_row_keys_ptr = NULL;
+}
+
+static void free_str(void *field_value) {
+    free(*((char **)field_value));
 }
 
 struct field_def {
@@ -213,12 +222,14 @@ static struct section_def section_defs[] = {
         MT_FIELD(label_select_color, "#fd0d", parse_color, noop),
         MT_FIELD(unselectable_bg_color, "#2226", parse_color, noop),
         MT_FIELD(selectable_bg_color, "#0304", parse_color, noop),
-        MT_FIELD(selectable_border_color, "#040c", parse_color, noop)
+        MT_FIELD(selectable_border_color, "#040c", parse_color, noop),
+        MT_FIELD(label_font_family, "sans-serif", parse_str, free_str)
     ),
     SECTION(
         mode_bisect, MB_FIELD(label_color, "#fffd", parse_color, noop),
         // TODO: we should set minimums for numbers.
         MB_FIELD(label_font_size, "20", parse_double, noop),
+        MB_FIELD(label_font_family, "sans-serif", parse_str, free_str),
         MB_FIELD(label_padding, "12", parse_double, noop),
         MB_FIELD(pointer_size, "20", parse_double, noop),
         MB_FIELD(pointer_color, "#e22d", parse_color, noop),
