@@ -95,6 +95,7 @@ struct state {
     struct wp_fractional_scale_manager_v1  *fractional_scale_mgr;
     struct surface_buffer_pool              surface_buffer_pool;
     struct wl_surface                      *wl_surface;
+    struct wl_callback                     *wl_surface_callback;
     struct zwlr_layer_surface_v1           *wl_layer_surface;
     struct zxdg_output_manager_v1          *xdg_output_manager;
     struct wl_list                          outputs;

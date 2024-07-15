@@ -57,6 +57,32 @@ static void send_frame(struct state *state) {
     wl_surface_commit(state->wl_surface);
 }
 
+static void surface_callback_done(
+    void *data, struct wl_callback *callback, uint32_t callback_data
+) {
+    struct state *state = data;
+    send_frame(state);
+
+    wl_callback_destroy(state->wl_surface_callback);
+    state->wl_surface_callback = NULL;
+}
+
+const struct wl_callback_listener surface_callback_listener = {
+    .done = surface_callback_done,
+};
+
+static void request_frame(struct state *state) {
+    if (state->wl_surface_callback != NULL) {
+        return;
+    }
+
+    state->wl_surface_callback = wl_surface_frame(state->wl_surface);
+    wl_callback_add_listener(
+        state->wl_surface_callback, &surface_callback_listener, state
+    );
+    wl_surface_commit(state->wl_surface);
+}
+
 static void noop() {}
 
 static void load_home_row(
@@ -167,7 +193,7 @@ static void handle_keyboard_key(
     if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         bool redraw = seat->state->mode->key(seat->state, key_sym, text);
         if (redraw) {
-            send_frame(seat->state);
+            request_frame(seat->state);
         }
     }
 }
@@ -406,11 +432,10 @@ static void handle_layer_surface_configure(
 
     if (state->mode == NULL) {
         tile_mode_enter(state);
-    }
 
-    if (state->running) {
-        // We might fail upon entering the mode above.
-        send_frame(state);
+        if (state->running) {
+            send_frame(state);
+        }
     }
 }
 
@@ -546,6 +571,7 @@ int main(int argc, char **argv) {
         .wl_shm               = NULL,
         .wl_layer_shell       = NULL,
         .wl_surface           = NULL,
+        .wl_surface_callback  = NULL,
         .wl_layer_surface     = NULL,
         .wp_viewporter        = NULL,
         .fractional_scale_mgr = NULL,
