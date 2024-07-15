@@ -455,7 +455,12 @@ static void fractional_scale_preferred(
     void *data, struct wp_fractional_scale_v1 *fractional_scale, uint32_t scale
 ) {
     struct state *state     = data;
+    int32_t       old_scale = state->fractional_scale;
     state->fractional_scale = scale;
+
+    if (old_scale != 0 && old_scale != scale) {
+        request_frame(state);
+    }
 }
 
 const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
