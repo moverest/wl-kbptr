@@ -27,11 +27,10 @@ If you are using NixOS, you can install the [`wl-kbptr` package](https://search.
 
 ### Chimera Linux
 
-If you are using Chimera Linux, you can install the [`wl-kbptr` package](https://pkgs.chimera-linux.org/package/current/user/x86_64/wl-kbptr) which is available in the [user repository](https://chimera-linux.org/docs/apk#repositories).
+If you are using Chimera Linux, you can install the [`wl-kbptr` package](https://pkgs.chimera-linux.org/package/current/contrib/x86_64/wl-kbptr) which is available in the [contrib repository](https://chimera-linux.org/docs/apk#repositories).
 
 ```bash
-apk add chimera-repo-user
-apk update
+apk add chimera-repo-contrib
 apk add wl-kbptr
 ```
 
