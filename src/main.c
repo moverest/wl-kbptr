@@ -753,7 +753,7 @@ int main(int argc, char **argv) {
     state.wl_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         state.wl_layer_shell, state.wl_surface,
         state.current_output == NULL ? NULL : state.current_output->wl_output,
-        ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "wl-kbptr"
+        ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "selection"
     );
     zwlr_layer_surface_v1_add_listener(
         state.wl_layer_surface, &wl_layer_surface_listener, &state
