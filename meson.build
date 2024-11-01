@@ -4,7 +4,7 @@ project(
   meson_version: '>=0.60.0',
   default_options: ['c_std=c11'],
   license: 'GPL-3.0',
-  version: '0.2.1',
+  version: '0.2.3',
 )
 
 add_project_arguments('-D_GNU_SOURCE=200809L', language: 'c')
