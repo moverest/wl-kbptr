@@ -9,8 +9,6 @@
 #include <string.h>
 #include <xkbcommon/xkbcommon.h>
 
-#define MIN_SUB_AREA_SIZE (25 * 50)
-
 static char determine_label_length(struct tile_mode_state *ms) {
     int areas = ms->sub_area_columns * ms->sub_area_rows;
     if (areas <= 8) {
@@ -69,10 +67,10 @@ void tile_mode_enter(struct state *state) {
         return;
     }
 
-    const int max_num_sub_areas = 8 * 8 * 8;
-    const int area_size         = state->initial_area.w * state->initial_area.h;
+    const struct mode_tile_config *config = &state->config.mode_tile;
+    const int area_size = state->initial_area.w * state->initial_area.h;
     const int sub_area_size =
-        max(area_size / max_num_sub_areas, MIN_SUB_AREA_SIZE);
+        max(area_size / config->max_num_sub_areas, config->min_sub_area_size);
 
     struct tile_mode_state *ms = &state->mode_state.tile;
 

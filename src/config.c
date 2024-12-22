@@ -4,6 +4,7 @@
 #include "state.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,6 +83,16 @@ static int parse_color(void *dest, char *value) {
 static int parse_double(void *dest, char *value) {
     *((double *)dest) = atof(value);
     // TODO: handle errors better.
+    return 0;
+}
+
+static int parse_int(void *dest, char *value) {
+    char *endptr;
+    long val = strtol(value, &endptr, 10);
+    if (*endptr != '\0' || val < 0 || val > INT_MAX) {
+        return 1;
+    }
+    *((int *)dest) = (int)val;
     return 0;
 }
 
@@ -218,12 +229,15 @@ static struct section_def section_defs[] = {
         G_FIELD(home_row_keys, "", parse_home_row_keys, free_home_row_keys)
     ),
     SECTION(
-        mode_tile, MT_FIELD(label_color, "#fffd", parse_color, noop),
+        mode_tile, 
+        MT_FIELD(label_color, "#fffd", parse_color, noop),
         MT_FIELD(label_select_color, "#fd0d", parse_color, noop),
         MT_FIELD(unselectable_bg_color, "#2226", parse_color, noop),
         MT_FIELD(selectable_bg_color, "#0304", parse_color, noop),
         MT_FIELD(selectable_border_color, "#040c", parse_color, noop),
-        MT_FIELD(label_font_family, "sans-serif", parse_str, free_str)
+        MT_FIELD(label_font_family, "sans-serif", parse_str, free_str),
+        MT_FIELD(max_num_sub_areas, "512", parse_int, noop),    // (8*8*8)
+        MT_FIELD(min_sub_area_size, "1250", parse_int, noop)    // (25*50)
     ),
     SECTION(
         mode_bisect, MB_FIELD(label_color, "#fffd", parse_color, noop),
