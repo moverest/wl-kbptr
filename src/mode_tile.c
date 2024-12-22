@@ -191,18 +191,18 @@ idx_to_rect(struct tile_mode_state *mode_state, int idx, int x_off, int y_off) {
     };
 }
 
-static bool
-tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
+static bool tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
     struct tile_mode_state *ms = &state->mode_state.tile;
+    struct mode_tile_config *config = &state->config.mode_tile;
 
     switch (keysym) {
     case XKB_KEY_BackSpace:
         return tile_mode_back(ms);
-        break;
 
     case XKB_KEY_Escape:
         state->running = false;
-        break;
+        return false;
+        
     default:;
         int matched_i = find_str(state->home_row, HOME_ROW_LEN, text);
 
@@ -218,12 +218,20 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
                     }
 
                     if (area_idx != INCOMPLETE_AREA_SELECTION) {
-                        bisect_mode_enter(
-                            state, idx_to_rect(
-                                       ms, area_idx, state->initial_area.x,
-                                       state->initial_area.y
-                                   )
+                        struct rect target = idx_to_rect(
+                            ms, area_idx, state->initial_area.x,
+                            state->initial_area.y
                         );
+                        
+                        if (config->enable_bisect) {
+                            bisect_mode_enter(state, target);
+                            return true;
+                        } else {
+                            // Copy the complete target rect
+                            memcpy(&state->result, &target, sizeof(struct rect));
+                            state->running = false;
+                            return false;  // Important: return false when exiting
+                        }
                     }
                     return true;
                 }

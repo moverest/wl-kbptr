@@ -2,6 +2,7 @@
 #define __CONFIG_H_INCLUDED__
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 struct general_config {
@@ -17,6 +18,7 @@ struct mode_tile_config {
     char    *label_font_family;
     int      max_num_sub_areas;
     int      min_sub_area_size;
+    bool     enable_bisect;
 };
 
 struct mode_bisect_config {
