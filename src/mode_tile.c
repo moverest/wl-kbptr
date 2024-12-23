@@ -9,8 +9,6 @@
 #include <string.h>
 #include <xkbcommon/xkbcommon.h>
 
-#define MIN_SUB_AREA_SIZE (25 * 50)
-
 static char determine_label_length(struct tile_mode_state *ms) {
     int areas = ms->sub_area_columns * ms->sub_area_rows;
     if (areas <= 8) {
@@ -69,10 +67,10 @@ void tile_mode_enter(struct state *state) {
         return;
     }
 
-    const int max_num_sub_areas = 8 * 8 * 8;
-    const int area_size         = state->initial_area.w * state->initial_area.h;
+    const struct mode_tile_config *config = &state->config.mode_tile;
+    const int area_size = state->initial_area.w * state->initial_area.h;
     const int sub_area_size =
-        max(area_size / max_num_sub_areas, MIN_SUB_AREA_SIZE);
+        max(area_size / config->max_num_sub_areas, config->min_sub_area_size);
 
     struct tile_mode_state *ms = &state->mode_state.tile;
 
@@ -193,18 +191,18 @@ idx_to_rect(struct tile_mode_state *mode_state, int idx, int x_off, int y_off) {
     };
 }
 
-static bool
-tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
+static bool tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
     struct tile_mode_state *ms = &state->mode_state.tile;
+    struct mode_tile_config *config = &state->config.mode_tile;
 
     switch (keysym) {
     case XKB_KEY_BackSpace:
         return tile_mode_back(ms);
-        break;
 
     case XKB_KEY_Escape:
         state->running = false;
-        break;
+        return false;
+        
     default:;
         int matched_i = find_str(state->home_row, HOME_ROW_LEN, text);
 
@@ -220,12 +218,20 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
                     }
 
                     if (area_idx != INCOMPLETE_AREA_SELECTION) {
-                        bisect_mode_enter(
-                            state, idx_to_rect(
-                                       ms, area_idx, state->initial_area.x,
-                                       state->initial_area.y
-                                   )
+                        struct rect target = idx_to_rect(
+                            ms, area_idx, state->initial_area.x,
+                            state->initial_area.y
                         );
+                        
+                        if (config->enable_bisect) {
+                            bisect_mode_enter(state, target);
+                            return true;
+                        } else {
+                            // Copy the complete target rect
+                            memcpy(&state->result, &target, sizeof(struct rect));
+                            state->running = false;
+                            return false;  // Important: return false when exiting
+                        }
                     }
                     return true;
                 }
@@ -247,7 +253,7 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
         cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
         CAIRO_FONT_WEIGHT_NORMAL
     );
-    cairo_set_font_size(cairo, (int)(ms->sub_area_height / 2));
+    cairo_set_font_size(cairo, (int)(ms->sub_area_height * config->area_font_percentage));
 
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_u32(cairo, config->unselectable_bg_color);
