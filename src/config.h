@@ -19,6 +19,7 @@ struct mode_tile_config {
     int      max_num_sub_areas;
     int      min_sub_area_size;
     bool     enable_bisect;
+    double   area_font_percentage;
 };
 
 struct mode_bisect_config {

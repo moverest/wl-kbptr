@@ -15,6 +15,7 @@ selectable_border_color=#040c
 max_num_sub_areas=512
 min_sub_area_size=1250
 enable_bisect=true
+area_font_percentage=0.5
 
 [mode_bisect]
 label_color=#fffd

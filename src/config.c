@@ -250,7 +250,8 @@ static struct section_def section_defs[] = {
         MT_FIELD(label_font_family, "sans-serif", parse_str, free_str),
         MT_FIELD(max_num_sub_areas, "512", parse_int, noop),
         MT_FIELD(min_sub_area_size, "1250", parse_int, noop),
-        MT_FIELD(enable_bisect, "true", parse_bool, noop)
+        MT_FIELD(enable_bisect, "true", parse_bool, noop),
+        MT_FIELD(area_font_percentage, "0.5", parse_double, noop)
     ),
     SECTION(
         mode_bisect, MB_FIELD(label_color, "#fffd", parse_color, noop),

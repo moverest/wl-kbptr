@@ -253,7 +253,7 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
         cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
         CAIRO_FONT_WEIGHT_NORMAL
     );
-    cairo_set_font_size(cairo, (int)(ms->sub_area_height / 2));
+    cairo_set_font_size(cairo, (int)(ms->sub_area_height * config->area_font_percentage));
 
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_u32(cairo, config->unselectable_bg_color);
