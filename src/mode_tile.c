@@ -1,8 +1,10 @@
 #include "config.h"
+#include "label.h"
 #include "log.h"
 #include "mode.h"
 #include "state.h"
 #include "utils.h"
+#include "utils_cairo.h"
 
 #include <cairo.h>
 #include <stdbool.h>
@@ -11,25 +13,8 @@
 
 #define MIN_SUB_AREA_SIZE (25 * 50)
 
-static char determine_label_length(struct tile_mode_state *ms) {
-    int areas = ms->sub_area_columns * ms->sub_area_rows;
-    if (areas <= 8) {
-        return 1;
-    } else if (areas <= 8 * 8) {
-        return 2;
-    } else {
-        return 3;
-    }
-}
-
 void tile_mode_enter(struct state *state) {
     state->mode = &tile_mode_interface;
-
-    memset(
-        state->mode_state.tile.area_selection, NO_AREA_SELECTION,
-        sizeof(state->mode_state.tile.area_selection) /
-            sizeof(state->mode_state.tile.area_selection[0])
-    );
 
     if (state->initial_area.w == -1) {
         state->initial_area.x = 0;
@@ -92,24 +77,23 @@ void tile_mode_enter(struct state *state) {
     ms->sub_area_width_off = state->initial_area.w % ms->sub_area_columns;
     ms->sub_area_width     = state->initial_area.w / ms->sub_area_columns;
 
-    ms->label_length = determine_label_length(ms);
+    ms->label_symbols =
+        label_symbols_from_str(state->config.mode_tile.label_symbols);
+    if (ms->label_symbols == NULL) {
+        ms->label_selection = NULL;
+        state->running      = false;
+        return;
+    }
+
+    ms->label_selection = label_selection_new(
+        ms->label_symbols, ms->sub_area_rows * ms->sub_area_columns
+    );
 }
 
 // `tile_mode_back` goes back in history. Returns true if there was something to
 // go back to.
 static bool tile_mode_back(struct tile_mode_state *mode_state) {
-    int i;
-    for (i = 0; i < mode_state->label_length &&
-                mode_state->area_selection[i] != NO_AREA_SELECTION;
-         i++) {
-        ;
-    }
-    if (i > 0) {
-        mode_state->area_selection[i - 1] = NO_AREA_SELECTION;
-        return true;
-    }
-
-    return false;
+    return label_selection_back(mode_state->label_selection) != 0;
 }
 
 // `tile_mode_reenter` reenters the tile mode. We assume that the saved state is
@@ -117,63 +101,6 @@ static bool tile_mode_back(struct tile_mode_state *mode_state) {
 void tile_mode_reenter(struct state *state) {
     state->mode = &tile_mode_interface;
     tile_mode_back(&state->mode_state.tile);
-}
-
-static void idx_to_label(
-    int idx, int num, int8_t *selection, char **home_row, char *label_selected,
-    char *label_unselected
-) {
-    label_selected[0]   = 0;
-    label_unselected[0] = 0;
-
-    bool  unselected_part = false;
-    char *curr_label      = label_selected;
-
-    for (int i = 0; i < num; i++) {
-        if (!unselected_part && selection[i] == NO_AREA_SELECTION) {
-            curr_label      = label_unselected;
-            unselected_part = true;
-        }
-
-        curr_label  = stpcpy(curr_label, home_row[idx % 8]);
-        idx        /= 8;
-    }
-}
-
-static bool selectable_area(int idx, int num, int8_t selection[]) {
-    for (int i = 0; i < num; i++) {
-        if (selection[i] == NO_AREA_SELECTION) {
-            return true;
-        }
-
-        if (selection[i] != idx % 8) {
-            return false;
-        }
-        idx /= 8;
-    }
-
-    return true;
-}
-
-#define INCOMPLETE_AREA_SELECTION -1
-#define OUT_OF_RANGE_AREA_IDX     -2
-
-static int get_selected_area_idx(struct tile_mode_state *mode_state) {
-    int idx  = 0;
-    int base = 1;
-    for (int i = 0; i < mode_state->label_length; i++) {
-        if (mode_state->area_selection[i] == NO_AREA_SELECTION) {
-            return INCOMPLETE_AREA_SELECTION;
-        }
-        idx  += base * mode_state->area_selection[i];
-        base *= 8;
-    }
-
-    if (idx >= mode_state->sub_area_rows * mode_state->sub_area_columns) {
-        return OUT_OF_RANGE_AREA_IDX;
-    }
-
-    return idx;
 }
 
 static struct rect
@@ -206,31 +133,22 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
         state->running = false;
         break;
     default:;
-        int matched_i = find_str(state->home_row, HOME_ROW_LEN, text);
-
-        if (matched_i != -1) {
-            for (int i = 0; i < 3; i++) {
-                if (ms->area_selection[i] == NO_AREA_SELECTION) {
-                    ms->area_selection[i] = matched_i;
-
-                    int area_idx = get_selected_area_idx(ms);
-                    if (area_idx == OUT_OF_RANGE_AREA_IDX) {
-                        ms->area_selection[i] = NO_AREA_SELECTION;
-                        return false;
-                    }
-
-                    if (area_idx != INCOMPLETE_AREA_SELECTION) {
-                        bisect_mode_enter(
-                            state, idx_to_rect(
-                                       ms, area_idx, state->initial_area.x,
-                                       state->initial_area.y
-                                   )
-                        );
-                    }
-                    return true;
-                }
-            }
+        int symbol_idx = label_symbols_find_idx(ms->label_symbols, text);
+        if (symbol_idx < 0) {
+            return false;
         }
+
+        label_selection_append(ms->label_selection, symbol_idx);
+
+        int idx = label_selection_to_idx(ms->label_selection);
+        if (idx > 0) {
+            bisect_mode_enter(
+                state, idx_to_rect(
+                           ms, idx, state->initial_area.x, state->initial_area.y
+                       )
+            );
+        }
+        return true;
     }
 
     return false;
@@ -238,10 +156,7 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 
 void tile_mode_render(struct state *state, cairo_t *cairo) {
     struct mode_tile_config *config = &state->config.mode_tile;
-    char                     label_selected[32];
-    char                     label_unselected[32];
-    int                      count = 0;
-    struct tile_mode_state  *ms    = &state->mode_state.tile;
+    struct tile_mode_state  *ms     = &state->mode_state.tile;
 
     cairo_select_font_face(
         cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
@@ -262,6 +177,15 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_line_width(cairo, 1);
     cairo_stroke(cairo);
 
+    label_selection_t *curr_label = label_selection_new(
+        ms->label_symbols, ms->sub_area_columns * ms->sub_area_rows
+    );
+    label_selection_set_from_idx(curr_label, 0);
+
+    int  label_str_max_len = label_selection_str_max_len(curr_label) + 1;
+    char label_selected_str[label_str_max_len];
+    char label_unselected_str[label_str_max_len];
+
     for (int i = 0; i < ms->sub_area_columns; i++) {
         for (int j = 0; j < ms->sub_area_rows; j++) {
             const int x =
@@ -273,9 +197,8 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
             const int h =
                 ms->sub_area_height + (j < ms->sub_area_height_off ? 1 : 0);
 
-            const bool selectable = selectable_area(
-                count, ms->label_length, state->mode_state.tile.area_selection
-            );
+            const bool selectable =
+                label_selection_is_included(curr_label, ms->label_selection);
 
             cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
             if (selectable) {
@@ -288,36 +211,43 @@ void tile_mode_render(struct state *state, cairo_t *cairo) {
                 cairo_set_line_width(cairo, 1);
                 cairo_stroke(cairo);
 
-                idx_to_label(
-                    count, ms->label_length,
-                    state->mode_state.tile.area_selection, state->home_row,
-                    label_selected, label_unselected
+                cairo_text_extents_t te_all;
+                label_selection_str(curr_label, label_selected_str);
+                cairo_text_extents(cairo, label_selected_str, &te_all);
+
+                label_selection_str_split(
+                    curr_label, label_selected_str, label_unselected_str,
+                    ms->label_selection->next
                 );
 
                 cairo_text_extents_t te_selected, te_unselected;
-                cairo_text_extents(cairo, label_selected, &te_selected);
-                cairo_text_extents(cairo, label_unselected, &te_unselected);
+                cairo_text_extents(cairo, label_selected_str, &te_selected);
+                cairo_text_extents(cairo, label_unselected_str, &te_unselected);
 
                 // Centers the label.
                 cairo_move_to(
                     cairo,
                     x + (w - te_selected.x_advance - te_unselected.x_advance) /
                             2,
-                    y + (int)((h + max(te_selected.height, te_unselected.height)
-                              ) /
-                              2)
+                    y + (int)((h + te_all.height) / 2)
                 );
                 cairo_set_source_u32(cairo, config->label_select_color);
-                cairo_show_text(cairo, label_selected);
+                cairo_show_text(cairo, label_selected_str);
                 cairo_set_source_u32(cairo, config->label_color);
-                cairo_show_text(cairo, label_unselected);
+                cairo_show_text(cairo, label_unselected_str);
             }
 
-            count++;
+            label_selection_incr(curr_label);
         }
     }
 
+    label_selection_free(curr_label);
     cairo_translate(cairo, -state->initial_area.x, -state->initial_area.y);
+}
+
+void tile_mode_state_free(struct tile_mode_state *tms) {
+    label_selection_free(tms->label_selection);
+    label_symbols_free(tms->label_symbols);
 }
 
 struct mode_interface tile_mode_interface = {

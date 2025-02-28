@@ -26,7 +26,9 @@ executable(
     'src/mode_tile.c',
     'src/mode_bisect.c',
     'src/utils.c',
+    'src/utils_cairo.c',
     'src/config.c',
+    'src/label.c',
     protos_src,
   ],
   dependencies: [
@@ -38,3 +40,14 @@ executable(
   ],
   install: true,
 )
+
+label_test_exec = executable(
+  'test_label',
+  [
+    'src/test_label.c',
+    'src/label.c',
+    'src/utils.c',
+  ],
+)
+
+test('test_label', label_test_exec)

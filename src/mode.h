@@ -17,6 +17,7 @@ extern struct mode_interface bisect_mode_interface;
 
 void tile_mode_enter(struct state *state);
 void tile_mode_reenter(struct state *state);
+void tile_mode_state_free(struct tile_mode_state *tms);
 void bisect_mode_enter(struct state *state, struct rect area);
 
 #endif

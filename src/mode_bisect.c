@@ -2,6 +2,7 @@
 #include "mode.h"
 #include "state.h"
 #include "utils.h"
+#include "utils_cairo.h"
 
 #include <math.h>
 #include <string.h>

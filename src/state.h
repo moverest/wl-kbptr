@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "fractional-scale-v1-client-protocol.h"
+#include "label.h"
 #include "surface_buffer.h"
 #include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
@@ -44,8 +45,8 @@ struct tile_mode_state {
     int sub_area_height;
     int sub_area_height_off;
 
-    int8_t  area_selection[3];
-    uint8_t label_length;
+    label_selection_t *label_selection;
+    label_symbols_t   *label_symbols;
 };
 
 struct rect {

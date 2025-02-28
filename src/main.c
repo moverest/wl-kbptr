@@ -402,14 +402,18 @@ static void handle_registry_global(
             registry, name, &zxdg_output_manager_v1_interface, 2
         );
 
-    } else if (strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name) == 0) {
+    } else if (strcmp(
+                   interface, zwlr_virtual_pointer_manager_v1_interface.name
+               ) == 0) {
         state->wl_virtual_pointer_mgr = wl_registry_bind(
             registry, name, &zwlr_virtual_pointer_manager_v1_interface, 2
         );
     } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
         state->wp_viewporter =
             wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
-    } else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0) {
+    } else if (strcmp(
+                   interface, wp_fractional_scale_manager_v1_interface.name
+               ) == 0) {
         state->fractional_scale_mgr = wl_registry_bind(
             registry, name, &wp_fractional_scale_manager_v1_interface, 1
         );
@@ -815,6 +819,7 @@ int main(int argc, char **argv) {
     wl_display_disconnect(state.wl_display);
 
     config_free_values(&state.config);
+    tile_mode_state_free(&state.mode_state.tile);
 
     return 0;
 }

@@ -210,8 +210,8 @@ struct section_def {
 
 static void noop() {}
 
-#pragma GCC diagnostic    push
-#pragma GCC diagnostic    ignored "-Wmissing-braces"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
 static struct section_def section_defs[] = {
     SECTION(
         general,
@@ -223,7 +223,10 @@ static struct section_def section_defs[] = {
         MT_FIELD(unselectable_bg_color, "#2226", parse_color, noop),
         MT_FIELD(selectable_bg_color, "#0304", parse_color, noop),
         MT_FIELD(selectable_border_color, "#040c", parse_color, noop),
-        MT_FIELD(label_font_family, "sans-serif", parse_str, free_str)
+        MT_FIELD(label_font_family, "sans-serif", parse_str, free_str),
+        MT_FIELD(
+            label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
+        )
     ),
     SECTION(
         mode_bisect, MB_FIELD(label_color, "#fffd", parse_color, noop),
