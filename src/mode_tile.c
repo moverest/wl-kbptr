@@ -54,7 +54,7 @@ void tile_mode_enter(struct state *state) {
         return;
     }
 
-    const int max_num_sub_areas = 8 * 8 * 8;
+    const int max_num_sub_areas = 26 * 26;
     const int area_size         = state->initial_area.w * state->initial_area.h;
     const int sub_area_size =
         max(area_size / max_num_sub_areas, MIN_SUB_AREA_SIZE);
