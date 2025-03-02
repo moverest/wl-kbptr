@@ -205,6 +205,8 @@ struct section_def {
     FIELD(struct general_config, name, default_value, parse, free)
 #define MT_FIELD(name, default_value, parse, free) \
     FIELD(struct mode_tile_config, name, default_value, parse, free)
+#define MF_FIELD(name, default_value, parse, free) \
+    FIELD(struct mode_floating_config, name, default_value, parse, free)
 #define MB_FIELD(name, default_value, parse, free) \
     FIELD(struct mode_bisect_config, name, default_value, parse, free)
 
@@ -225,6 +227,17 @@ static struct section_def section_defs[] = {
         MT_FIELD(selectable_border_color, "#040c", parse_color, noop),
         MT_FIELD(label_font_family, "sans-serif", parse_str, free_str),
         MT_FIELD(
+            label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
+        )
+    ),
+    SECTION(
+        mode_floating, MF_FIELD(label_color, "#fffd", parse_color, noop),
+        MF_FIELD(label_select_color, "#fd0d", parse_color, noop),
+        MF_FIELD(unselectable_bg_color, "#2226", parse_color, noop),
+        MF_FIELD(selectable_bg_color, "#171a", parse_color, noop),
+        MF_FIELD(selectable_border_color, "#040c", parse_color, noop),
+        MF_FIELD(label_font_family, "sans-serif", parse_str, free_str),
+        MF_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
         )
     ),

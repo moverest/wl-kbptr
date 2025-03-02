@@ -2,13 +2,22 @@
 #define __CONFIG_H_INCLUDED__
 
 #include <stdint.h>
-#include <stdio.h>
 
 struct general_config {
     char **home_row_keys;
 };
 
 struct mode_tile_config {
+    uint32_t label_color;
+    uint32_t label_select_color;
+    uint32_t unselectable_bg_color;
+    uint32_t selectable_bg_color;
+    uint32_t selectable_border_color;
+    char    *label_font_family;
+    char    *label_symbols;
+};
+
+struct mode_floating_config {
     uint32_t label_color;
     uint32_t label_select_color;
     uint32_t unselectable_bg_color;
@@ -37,9 +46,10 @@ struct mode_bisect_config {
 };
 
 struct config {
-    struct general_config     general;
-    struct mode_tile_config   mode_tile;
-    struct mode_bisect_config mode_bisect;
+    struct general_config       general;
+    struct mode_tile_config     mode_tile;
+    struct mode_floating_config mode_floating;
+    struct mode_bisect_config   mode_bisect;
 };
 
 /**

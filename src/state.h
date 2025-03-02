@@ -56,6 +56,13 @@ struct rect {
     int32_t h;
 };
 
+struct floating_mode_state {
+    struct rect       *areas;
+    int                num_areas;
+    label_selection_t *label_selection;
+    label_symbols_t   *label_symbols;
+};
+
 struct bisect_mode_state {
     struct rect areas[BISECT_MAX_HISTORY];
     int         current;
@@ -112,8 +119,9 @@ struct state {
     struct rect            result;
     struct mode_interface *mode;
     struct {
-        struct tile_mode_state   tile;
-        struct bisect_mode_state bisect;
+        struct tile_mode_state     tile;
+        struct floating_mode_state floating;
+        struct bisect_mode_state   bisect;
     } mode_state;
     enum click click;
 };

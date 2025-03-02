@@ -435,7 +435,7 @@ static void handle_layer_surface_configure(
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 
     if (state->mode == NULL) {
-        tile_mode_enter(state);
+        floating_mode_enter(state);
 
         if (state->running) {
             send_frame(state);

@@ -141,7 +141,7 @@ tile_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
         label_selection_append(ms->label_selection, symbol_idx);
 
         int idx = label_selection_to_idx(ms->label_selection);
-        if (idx > 0) {
+        if (idx >= 0) {
             bisect_mode_enter(
                 state, idx_to_rect(
                            ms, idx, state->initial_area.x, state->initial_area.y

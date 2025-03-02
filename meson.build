@@ -24,6 +24,7 @@ executable(
     'src/main.c',
     'src/surface_buffer.c',
     'src/mode_tile.c',
+    'src/mode_floating.c',
     'src/mode_bisect.c',
     'src/utils.c',
     'src/utils_cairo.c',
