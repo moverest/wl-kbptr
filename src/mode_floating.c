@@ -118,18 +118,35 @@ void floating_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_source_u32(cairo, config->unselectable_bg_color);
     cairo_paint(cairo);
 
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    for (int i = 0; i < ms->num_areas; i++) {
+        const bool selectable =
+            label_selection_is_included(curr_label, ms->label_selection);
+
+        if (selectable) {
+            struct rect a = ms->areas[i];
+            cairo_set_source_rgba(cairo, 0, 0, 0, 0);
+            cairo_rectangle(cairo, a.x, a.y, a.w, a.h);
+            cairo_fill(cairo);
+        }
+
+        label_selection_incr(curr_label);
+    }
+
+    label_selection_set_from_idx(curr_label, 0);
     for (int i = 0; i < ms->num_areas; i++) {
         struct rect a = ms->areas[i];
 
         const bool selectable =
             label_selection_is_included(curr_label, ms->label_selection);
 
-        cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
         if (selectable) {
+            cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
             cairo_set_source_u32(cairo, config->selectable_bg_color);
             cairo_rectangle(cairo, a.x, a.y, a.w, a.h);
             cairo_fill(cairo);
 
+            cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
             cairo_set_source_u32(cairo, config->selectable_border_color);
             cairo_rectangle(cairo, a.x + .5, a.y + .5, a.w - 1, a.h - 1);
             cairo_set_line_width(cairo, 1);
@@ -155,6 +172,7 @@ void floating_mode_render(struct state *state, cairo_t *cairo) {
                     (a.w - te_selected.x_advance - te_unselected.x_advance) / 2,
                 a.y + (int)((a.h + te_all.height) / 2)
             );
+            cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
             cairo_set_source_u32(cairo, config->label_select_color);
             cairo_show_text(cairo, label_selected_str);
             cairo_set_source_u32(cairo, config->label_color);
