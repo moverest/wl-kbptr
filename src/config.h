@@ -5,6 +5,7 @@
 
 struct general_config {
     char **home_row_keys;
+    char  *modes;
 };
 
 struct mode_tile_config {

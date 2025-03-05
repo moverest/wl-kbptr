@@ -23,6 +23,7 @@ executable(
   [
     'src/main.c',
     'src/surface_buffer.c',
+    'src/mode.c',
     'src/mode_tile.c',
     'src/mode_floating.c',
     'src/mode_bisect.c',

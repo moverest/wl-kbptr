@@ -156,7 +156,7 @@ def run():
     rects.sort(key=lambda rect: -rect.h * rect.w)
 
     process = subprocess.run(
-        ["wl-kbptr"],
+        ["wl-kbptr", "-o", "general.modes=floating,bisect"],
         input="\n".join(map(str, rects)).encode(),
         check=False,
     )

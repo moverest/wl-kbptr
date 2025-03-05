@@ -27,6 +27,9 @@
 // pixels.
 #define BISECT_MAX_HISTORY 16
 
+#define MAX_NUM_MODES   3
+#define NO_MODE_ENTERED -1
+
 enum click {
     CLICK_NONE = 0,
     CLICK_LEFT_BTN,
@@ -36,7 +39,16 @@ enum click {
 
 struct mode_interface;
 
+struct rect {
+    int32_t x;
+    int32_t y;
+    int32_t w;
+    int32_t h;
+};
+
 struct tile_mode_state {
+    struct rect area;
+
     int sub_area_rows;
     int sub_area_width;
     int sub_area_width_off;
@@ -47,13 +59,6 @@ struct tile_mode_state {
 
     label_selection_t *label_selection;
     label_symbols_t   *label_symbols;
-};
-
-struct rect {
-    int32_t x;
-    int32_t y;
-    int32_t w;
-    int32_t h;
 };
 
 struct floating_mode_state {
@@ -117,13 +122,10 @@ struct state {
     char                   home_row_buffer[HOME_ROW_BUFFER_LEN];
     char                 **home_row;
     struct rect            result;
-    struct mode_interface *mode;
-    struct {
-        struct tile_mode_state     tile;
-        struct floating_mode_state floating;
-        struct bisect_mode_state   bisect;
-    } mode_state;
-    enum click click;
+    struct mode_interface *mode_interfaces[MAX_NUM_MODES];
+    void                  *mode_states[MAX_NUM_MODES];
+    int                    current_mode;
+    enum click             click;
 };
 
 #endif

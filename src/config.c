@@ -217,7 +217,8 @@ static void noop() {}
 static struct section_def section_defs[] = {
     SECTION(
         general,
-        G_FIELD(home_row_keys, "", parse_home_row_keys, free_home_row_keys)
+        G_FIELD(home_row_keys, "", parse_home_row_keys, free_home_row_keys),
+        G_FIELD(modes, "tile,bisect", parse_str, free_str)
     ),
     SECTION(
         mode_tile, MT_FIELD(label_color, "#fffd", parse_color, noop),

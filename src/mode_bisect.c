@@ -5,6 +5,7 @@
 #include "utils_cairo.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define DIVIDE_8_RATIO 1.8
@@ -57,10 +58,12 @@ enum bisect_division {
     UNDIVIDABLE,
 };
 
-void bisect_mode_enter(struct state *state, struct rect area) {
-    state->mode                       = &bisect_mode_interface;
-    state->mode_state.bisect.areas[0] = area;
-    state->mode_state.bisect.current  = 0;
+void *bisect_mode_enter(struct state *state, struct rect area) {
+    struct bisect_mode_state *ms = malloc(sizeof(struct bisect_mode_state));
+    ms->areas[0]                 = area;
+    ms->current                  = 0;
+
+    return ms;
 }
 
 static enum bisect_division determine_division(struct rect *area) {
@@ -80,7 +83,7 @@ static enum bisect_division determine_division(struct rect *area) {
 }
 
 struct division_interface {
-    void (*render)(enum bisect_division, struct state *, cairo_t *);
+    void (*render)(enum bisect_division, struct state *, struct bisect_mode_state *ms, cairo_t *);
 
     // `idx_to_sub_area` returns the sub-area indicated by the given index in
     // `rect` while also returning true. If the index does map to a sub-area,
@@ -92,11 +95,11 @@ struct division_interface {
 };
 
 static void division_4_or_8_render(
-    enum bisect_division division, struct state *state, cairo_t *cairo
+    enum bisect_division division, struct state *state,
+    struct bisect_mode_state *ms, cairo_t *cairo
 ) {
     struct mode_bisect_config *config = &state->config.mode_bisect;
-    struct rect               *area =
-        &state->mode_state.bisect.areas[state->mode_state.bisect.current];
+    struct rect               *area   = &ms->areas[ms->current];
 
     bool divide_8 = division == DIVISION_8;
 
@@ -212,11 +215,11 @@ static bool division_4_or_8_idx_to_rect(
 }
 
 static void division_horizontal_render(
-    enum bisect_division division, struct state *state, cairo_t *cairo
+    enum bisect_division division, struct state *state,
+    struct bisect_mode_state *ms, cairo_t *cairo
 ) {
     struct mode_bisect_config *config = &state->config.mode_bisect;
-    struct rect               *area =
-        &state->mode_state.bisect.areas[state->mode_state.bisect.current];
+    struct rect               *area   = &ms->areas[ms->current];
 
     cairo_set_source_u32(cairo, config->even_area_border_color);
     cairo_set_line_width(cairo, 1);
@@ -263,12 +266,12 @@ static bool division_horizontal_idx_to_rect(
 }
 
 static void division_vertical_render(
-    enum bisect_division division, struct state *state, cairo_t *cairo
+    enum bisect_division division, struct state *state,
+    struct bisect_mode_state *ms, cairo_t *cairo
 ) {
 
     struct mode_bisect_config *config = &state->config.mode_bisect;
-    struct rect               *area =
-        &state->mode_state.bisect.areas[state->mode_state.bisect.current];
+    struct rect               *area   = &ms->areas[ms->current];
 
     cairo_set_source_u32(cairo, config->even_area_border_color);
     cairo_set_line_width(cairo, 1);
@@ -314,11 +317,11 @@ static bool division_vertical_idx_to_rect(
 }
 
 static void undividable_render(
-    enum bisect_division division, struct state *state, cairo_t *cairo
+    enum bisect_division division, struct state *state,
+    struct bisect_mode_state *ms, cairo_t *cairo
 ) {
     struct mode_bisect_config *config = &state->config.mode_bisect;
-    struct rect               *area =
-        &state->mode_state.bisect.areas[state->mode_state.bisect.current];
+    struct rect               *area   = &ms->areas[ms->current];
 
     cairo_set_source_u32(cairo, config->pointer_color);
     cairo_arc(
@@ -351,10 +354,11 @@ static const struct division_interface division_interfaces[] = {
         },
 };
 
-static void bisect_mode_render(struct state *state, cairo_t *cairo) {
-    struct mode_bisect_config *config     = &state->config.mode_bisect;
-    struct bisect_mode_state  *mode_state = &state->mode_state.bisect;
-    struct rect *area = &mode_state->areas[state->mode_state.bisect.current];
+static void
+bisect_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
+    struct mode_bisect_config *config = &state->config.mode_bisect;
+    struct bisect_mode_state  *ms     = mode_state;
+    struct rect               *area   = &ms->areas[ms->current];
 
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_u32(cairo, config->unselectable_bg_color);
@@ -363,23 +367,17 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_set_source_u32(cairo, config->history_border_color);
     cairo_set_line_width(cairo, 1);
 
-    cairo_rectangle(
-        cairo, state->initial_area.x + .5, state->initial_area.y + .5,
-        state->initial_area.w - 1, state->initial_area.h - 1
-    );
-    cairo_stroke(cairo);
-
-    for (int i = 0; i < mode_state->current; i++) {
-        struct rect *area = &mode_state->areas[i];
+    for (int i = 0; i < ms->current; i++) {
+        struct rect *area = &ms->areas[i];
         cairo_rectangle(
             cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
         );
         cairo_stroke(cairo);
     }
 
-    if (mode_state->current < BISECT_MAX_HISTORY) {
+    if (ms->current < BISECT_MAX_HISTORY) {
         enum bisect_division division = determine_division(area);
-        division_interfaces[division].render(division, state, cairo);
+        division_interfaces[division].render(division, state, ms, cairo);
     }
 
     cairo_set_line_width(cairo, 1);
@@ -402,9 +400,10 @@ static void bisect_mode_render(struct state *state, cairo_t *cairo) {
     cairo_stroke(cairo);
 }
 
-static bool
-bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
-    struct bisect_mode_state *mode_state = &state->mode_state.bisect;
+static bool bisect_mode_key(
+    struct state *state, void *mode_state, xkb_keysym_t keysym, char *text
+) {
+    struct bisect_mode_state *ms = mode_state;
 
     switch (keysym) {
     case XKB_KEY_Escape:
@@ -413,27 +412,23 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 
     case XKB_KEY_Return:
     case XKB_KEY_space:
-        memcpy(
-            &state->result, &mode_state->areas[mode_state->current],
-            sizeof(struct rect)
-        );
-        state->running = false;
-        return false;
+        enter_next_mode(state, ms->areas[ms->current]);
+        return true;
 
     case XKB_KEY_BackSpace:
-        if (mode_state->current > 0) {
-            mode_state->current--;
+        if (ms->current > 0) {
+            ms->current--;
         } else {
-            floating_mode_reenter(state);
+            reenter_prev_mode(state);
         }
         return true;
 
     default:
-        if (mode_state->current + 1 >= BISECT_MAX_HISTORY) {
+        if (ms->current + 1 >= BISECT_MAX_HISTORY) {
             return false;
         }
 
-        struct rect         *area     = &mode_state->areas[mode_state->current];
+        struct rect         *area     = &ms->areas[ms->current];
         enum bisect_division division = determine_division(area);
 
         int matched_i = find_str(state->home_row, HOME_ROW_LEN_WITH_BTN, text);
@@ -454,11 +449,7 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
                 break;
             }
 
-            memcpy(
-                &state->result, &mode_state->areas[mode_state->current],
-                sizeof(struct rect)
-            );
-            state->running = false;
+            enter_next_mode(state, ms->areas[ms->current]);
             return false;
         }
 
@@ -466,11 +457,11 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
             return false;
         }
 
-        struct rect *new_area = &mode_state->areas[mode_state->current + 1];
+        struct rect *new_area = &ms->areas[ms->current + 1];
         if (division_interfaces[division].idx_to_sub_area(
                 division, matched_i, area, new_area
             )) {
-            mode_state->current++;
+            ms->current++;
             return true;
         }
     }
@@ -478,7 +469,16 @@ bisect_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
     return false;
 }
 
+void bisect_mode_reenter(struct state *state, void *mode_state) {}
+void bisect_mode_free(void *mode_state) {
+    free(mode_state);
+}
+
 struct mode_interface bisect_mode_interface = {
-    .key    = bisect_mode_key,
-    .render = bisect_mode_render,
+    .name    = "bisect",
+    .enter   = bisect_mode_enter,
+    .reenter = bisect_mode_reenter,
+    .key     = bisect_mode_key,
+    .render  = bisect_mode_render,
+    .free    = bisect_mode_free,
 };

@@ -14,10 +14,8 @@
 
 #define MIN_SUB_AREA_SIZE (25 * 50)
 
-void floating_mode_enter(struct state *state) {
-    state->mode = &floating_mode_interface;
-
-    struct floating_mode_state *ms = &state->mode_state.floating;
+void *floating_mode_enter(struct state *state, struct rect area) {
+    struct floating_mode_state *ms = malloc(sizeof(struct floating_mode_state));
 
     size_t       areas_cap   = 256;
     struct rect *areas       = malloc(sizeof(struct rect) * areas_cap);
@@ -56,21 +54,22 @@ void floating_mode_enter(struct state *state) {
     if (ms->label_symbols == NULL) {
         ms->label_selection = NULL;
         state->running      = false;
-        return;
+        return ms;
     }
 
     ms->label_selection = label_selection_new(ms->label_symbols, areas_count);
-    // TODO: Handle freeing.
+    return ms;
 }
 
-void floating_mode_reenter(struct state *state) {
-    state->mode = &floating_mode_interface;
-    label_selection_back(state->mode_state.floating.label_selection);
+void floating_mode_reenter(struct state *state, void *mode_state) {
+    struct floating_mode_state *ms = mode_state;
+    label_selection_back(ms->label_selection);
 }
 
-static bool
-floating_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
-    struct floating_mode_state *ms = &state->mode_state.floating;
+static bool floating_mode_key(
+    struct state *state, void *mode_state, xkb_keysym_t keysym, char *text
+) {
+    struct floating_mode_state *ms = mode_state;
 
     switch (keysym) {
     case XKB_KEY_BackSpace:
@@ -89,7 +88,7 @@ floating_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
 
         int idx = label_selection_to_idx(ms->label_selection);
         if (idx >= 0) {
-            bisect_mode_enter(state, ms->areas[idx]);
+            enter_next_mode(state, ms->areas[idx]);
         }
         return true;
     }
@@ -97,8 +96,10 @@ floating_mode_key(struct state *state, xkb_keysym_t keysym, char *text) {
     return false;
 }
 
-void floating_mode_render(struct state *state, cairo_t *cairo) {
-    struct floating_mode_state  *ms     = &state->mode_state.floating;
+void floating_mode_render(
+    struct state *state, void *mode_state, cairo_t *cairo
+) {
+    struct floating_mode_state  *ms     = mode_state;
     struct mode_floating_config *config = &state->config.mode_floating;
 
     label_selection_t *curr_label =
@@ -183,7 +184,19 @@ void floating_mode_render(struct state *state, cairo_t *cairo) {
     }
 }
 
+void floating_mode_free(void *mode_state) {
+    struct floating_mode_state *ms = mode_state;
+    free(ms->areas);
+    label_selection_free(ms->label_selection);
+    label_symbols_free(ms->label_symbols);
+    free(ms);
+}
+
 struct mode_interface floating_mode_interface = {
-    .key    = floating_mode_key,
-    .render = floating_mode_render,
+    .name    = "floating",
+    .enter   = floating_mode_enter,
+    .reenter = floating_mode_reenter,
+    .key     = floating_mode_key,
+    .render  = floating_mode_render,
+    .free    = floating_mode_free,
 };

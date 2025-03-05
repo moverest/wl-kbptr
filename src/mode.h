@@ -8,21 +8,27 @@
 #include <xkbcommon/xkbcommon.h>
 
 struct mode_interface {
-    bool (*key)(struct state *, xkb_keysym_t, char *text);
-    void (*render)(struct state *, cairo_t *);
+    char *name;
+    void *(*enter)(struct state *, struct rect area);
+    void (*reenter)(struct state *, void *mode_state);
+    bool (*key)(struct state *, void *mode_state, xkb_keysym_t, char *text);
+    void (*render)(struct state *, void *mode_state, cairo_t *);
+    void (*free)(void *mode_state);
 };
 
-extern struct mode_interface tile_mode_interface;
-extern struct mode_interface floating_mode_interface;
-extern struct mode_interface bisect_mode_interface;
+extern struct mode_interface *mode_interfaces[];
 
-void tile_mode_enter(struct state *state);
-void tile_mode_reenter(struct state *state);
-void tile_mode_state_free(struct tile_mode_state *tms);
+/**
+ * Load modes from given coma seperated list of mode names.
+ * Returns 0 on success.
+ */
+int load_modes(struct state *, char *);
 
-void floating_mode_enter(struct state *state);
-void floating_mode_reenter(struct state *state);
-
-void bisect_mode_enter(struct state *state, struct rect area);
+void enter_next_mode(struct state *, struct rect area);
+bool has_last_mode_returned(struct state *);
+bool reenter_prev_mode(struct state *);
+void free_mode_states(struct state *);
+bool mode_handle_key(struct state *, xkb_keysym_t, char *text);
+void mode_render(struct state *, cairo_t *);
 
 #endif
