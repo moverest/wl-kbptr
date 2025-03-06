@@ -1,0 +1,1 @@
+option('opencv', type: 'feature', value: 'enabled')

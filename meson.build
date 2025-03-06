@@ -7,8 +7,16 @@ project(
   version: '0.2.3',
 )
 
+use_opencv = get_option('opencv').enabled()
+
 add_project_arguments('-D_GNU_SOURCE=200809L', language: 'c')
 cc = meson.get_compiler('c')
+
+if use_opencv
+  add_project_arguments('-DOPENCV_ENABLED=1', language: ['c', 'cpp'])
+  add_languages('cpp')
+  opencv = dependency('opencv4')
+endif
 
 wayland_client = dependency('wayland-client')
 wayland_protos = dependency('wayland-protocols')
@@ -18,28 +26,40 @@ math = cc.find_library('m')
 
 subdir('protocol')
 
+dependencies = [
+  wayland_client,
+  xkbcommon,
+  cairo,
+  math,
+  wayland_client,
+]
+
+sources = [
+  'src/main.c',
+  'src/surface_buffer.c',
+  'src/mode.c',
+  'src/mode_tile.c',
+  'src/mode_floating.c',
+  'src/mode_bisect.c',
+  'src/utils.c',
+  'src/utils_cairo.c',
+  'src/config.c',
+  'src/label.c',
+  protos_src,
+]
+
+if use_opencv
+  sources += [
+    'src/screencopy.c',
+    'src/target_detection.cpp',
+  ]
+  dependencies += [opencv]
+endif
+
 executable(
   'wl-kbptr',
-  [
-    'src/main.c',
-    'src/surface_buffer.c',
-    'src/mode.c',
-    'src/mode_tile.c',
-    'src/mode_floating.c',
-    'src/mode_bisect.c',
-    'src/utils.c',
-    'src/utils_cairo.c',
-    'src/config.c',
-    'src/label.c',
-    protos_src,
-  ],
-  dependencies: [
-    wayland_client,
-    xkbcommon,
-    cairo,
-    math,
-    wayland_client,
-  ],
+  sources,
+  dependencies: dependencies,
   install: true,
 )
 

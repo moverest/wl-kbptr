@@ -159,6 +159,25 @@ static int parse_str(void *dest, char *value) {
     return 0;
 }
 
+static int parse_floating_mode_source_value(void *dest, char *value) {
+    enum floating_mode_source *out = dest;
+    if (strcmp(value, "stdin") == 0) {
+        *out = FLOATING_MODE_SOURCE_STDIN;
+    } else if (strcmp(value, "detect") == 0) {
+#if OPENCV_ENABLED
+        *out = FLOATING_MODE_SOURCE_DETECT;
+#else
+        LOG_ERR("Binary not build with OpenCV. 'detect' source not supported.");
+        return 2;
+#endif
+    } else {
+        LOG_ERR("Invalid source '%s'. Should be 'stdin' or 'detect'.", value);
+        return 1;
+    }
+
+    return 0;
+}
+
 static void free_home_row_keys(void *field_value) {
     char ***home_row_keys_ptr = field_value;
     if (*home_row_keys_ptr == NULL) {
@@ -232,7 +251,9 @@ static struct section_def section_defs[] = {
         )
     ),
     SECTION(
-        mode_floating, MF_FIELD(label_color, "#fffd", parse_color, noop),
+        mode_floating,
+        MF_FIELD(source, "stdin", parse_floating_mode_source_value, noop),
+        MF_FIELD(label_color, "#fffd", parse_color, noop),
         MF_FIELD(label_select_color, "#fd0d", parse_color, noop),
         MF_FIELD(unselectable_bg_color, "#2226", parse_color, noop),
         MF_FIELD(selectable_bg_color, "#1718", parse_color, noop),

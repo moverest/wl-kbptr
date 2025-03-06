@@ -21,6 +21,7 @@ client_protocols = [
   wl_protocol_dir / 'stable/viewporter/viewporter.xml',
   'wlr-layer-shell-unstable-v1.xml',
   'wlr-virtual-pointer-unstable-v1.xml',
+  'wlr-screencopy-unstable-v1.xml',
   'fractional-scale-v1.xml',
 ]
 

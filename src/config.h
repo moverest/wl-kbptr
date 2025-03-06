@@ -18,14 +18,20 @@ struct mode_tile_config {
     char    *label_symbols;
 };
 
+enum floating_mode_source {
+    FLOATING_MODE_SOURCE_STDIN,
+    FLOATING_MODE_SOURCE_DETECT,
+};
+
 struct mode_floating_config {
-    uint32_t label_color;
-    uint32_t label_select_color;
-    uint32_t unselectable_bg_color;
-    uint32_t selectable_bg_color;
-    uint32_t selectable_border_color;
-    char    *label_font_family;
-    char    *label_symbols;
+    enum floating_mode_source source;
+    uint32_t                  label_color;
+    uint32_t                  label_select_color;
+    uint32_t                  unselectable_bg_color;
+    uint32_t                  selectable_bg_color;
+    uint32_t                  selectable_border_color;
+    char                     *label_font_family;
+    char                     *label_symbols;
 };
 
 struct mode_bisect_config {
