@@ -1,7 +1,9 @@
 #include "config.h"
 #include "log.h"
 #include "mode.h"
+#include "screencopy.h"
 #include "state.h"
+#include "target_detection.h"
 #include "utils.h"
 #include "utils_cairo.h"
 
@@ -14,9 +16,7 @@
 
 #define MIN_SUB_AREA_SIZE (25 * 50)
 
-void *floating_mode_enter(struct state *state, struct rect area) {
-    struct floating_mode_state *ms = malloc(sizeof(struct floating_mode_state));
-
+static void get_areas_from_stdin(struct floating_mode_state *ms) {
     size_t       areas_cap   = 256;
     struct rect *areas       = malloc(sizeof(struct rect) * areas_cap);
     int          areas_count = 0;
@@ -48,6 +48,30 @@ void *floating_mode_enter(struct state *state, struct rect area) {
 
     ms->areas     = areas;
     ms->num_areas = areas_count;
+}
+
+static void get_area_from_screenshot(
+    struct state *state, struct floating_mode_state *ms, struct rect area
+) {
+    // This is so that we don't capture window borders.
+    area.x += 1;
+    area.y += 1;
+    area.h -= 2;
+    area.w -= 2;
+
+    query_screenshot(state, area);
+    ms->num_areas = compute_target_from_img_buffer(
+        state->scrcpy_buffer->data, state->scrcpy_buffer->height,
+        state->scrcpy_buffer->width, state->scrcpy_buffer->stride,
+        state->scrcpy_buffer->format, area, &ms->areas
+    );
+    destroy_scrcpy_buffer(state->scrcpy_buffer);
+    state->scrcpy_buffer = NULL;
+}
+
+void *floating_mode_enter(struct state *state, struct rect area) {
+    struct floating_mode_state *ms = malloc(sizeof(struct floating_mode_state));
+
     ms->label_symbols =
         label_symbols_from_str(state->config.mode_floating.label_symbols);
 
@@ -57,7 +81,9 @@ void *floating_mode_enter(struct state *state, struct rect area) {
         return ms;
     }
 
-    ms->label_selection = label_selection_new(ms->label_symbols, areas_count);
+    get_area_from_screenshot(state, ms, area);
+
+    ms->label_selection = label_selection_new(ms->label_symbols, ms->num_areas);
     return ms;
 }
 

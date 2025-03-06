@@ -23,7 +23,7 @@ static int create_shm_file(void) {
     return fd;
 }
 
-static int allocate_shm_file(size_t size) {
+int allocate_shm_file(size_t size) {
     int fd = create_shm_file();
     if (fd < 0) {
         return -1;
@@ -76,6 +76,8 @@ static struct surface_buffer *surface_buffer_init(
     );
     wl_buffer_add_listener(buffer->wl_buffer, &wl_buffer_listener, buffer);
     wl_shm_pool_destroy(wl_shm_pool);
+
+    close(fd);
 
     buffer->data      = data;
     buffer->data_size = data_size;

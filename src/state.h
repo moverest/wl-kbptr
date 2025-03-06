@@ -4,9 +4,12 @@
 #include "config.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "label.h"
+#include "screencopy.h"
 #include "surface_buffer.h"
+#include "utils.h"
 #include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "wlr-screencopy-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 
 #include <stdbool.h>
@@ -38,13 +41,6 @@ enum click {
 };
 
 struct mode_interface;
-
-struct rect {
-    int32_t x;
-    int32_t y;
-    int32_t w;
-    int32_t h;
-};
 
 struct tile_mode_state {
     struct rect area;
@@ -110,6 +106,10 @@ struct state {
     struct wl_surface                      *wl_surface;
     struct wl_callback                     *wl_surface_callback;
     struct zwlr_layer_surface_v1           *wl_layer_surface;
+    struct zwlr_screencopy_manager_v1      *wl_screencopy_manager;
+    struct zwlr_screencopy_frame_v1        *wl_screencopy_frame;
+    struct scrcpy_buffer                   *scrcpy_buffer;
+    bool                                    screen_captured;
     struct zxdg_output_manager_v1          *xdg_output_manager;
     struct wl_list                          outputs;
     struct wl_list                          seats;

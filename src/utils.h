@@ -4,6 +4,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct rect {
+    int32_t x;
+    int32_t y;
+    int32_t w;
+    int32_t h;
+};
+
 int max(int a, int b);
 int min(int a, int b);
 int find_str(char **strs, size_t len, char *to_find);

@@ -36,4 +36,6 @@ struct surface_buffer *get_next_buffer(
     uint32_t height
 );
 
+int allocate_shm_file(size_t size);
+
 #endif

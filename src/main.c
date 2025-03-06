@@ -6,6 +6,7 @@
 #include "surface_buffer.h"
 #include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "wlr-screencopy-unstable-v1-client-protocol.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
@@ -419,6 +420,11 @@ static void handle_registry_global(
         state->fractional_scale_mgr = wl_registry_bind(
             registry, name, &wp_fractional_scale_manager_v1_interface, 1
         );
+    } else if (strcmp(interface, zwlr_screencopy_manager_v1_interface.name) ==
+               0) {
+        state->wl_screencopy_manager = wl_registry_bind(
+            registry, name, &zwlr_screencopy_manager_v1_interface, 1
+        );
     }
 }
 
@@ -618,20 +624,23 @@ static void print_usage() {
 
 int main(int argc, char **argv) {
     struct state state = {
-        .wl_display           = NULL,
-        .wl_registry          = NULL,
-        .wl_compositor        = NULL,
-        .wl_shm               = NULL,
-        .wl_layer_shell       = NULL,
-        .wl_surface           = NULL,
-        .wl_surface_callback  = NULL,
-        .wl_layer_surface     = NULL,
-        .wp_viewporter        = NULL,
-        .fractional_scale_mgr = NULL,
-        .running              = true,
-        .fractional_scale     = 0,
-        .result               = (struct rect){-1, -1, -1, -1},
-        .initial_area         = (struct rect){-1, -1, -1, -1},
+        .wl_display            = NULL,
+        .wl_registry           = NULL,
+        .wl_compositor         = NULL,
+        .wl_shm                = NULL,
+        .wl_layer_shell        = NULL,
+        .wl_surface            = NULL,
+        .wl_surface_callback   = NULL,
+        .wl_layer_surface      = NULL,
+        .wl_screencopy_manager = NULL,
+        .wl_screencopy_frame   = NULL,
+        .screen_captured       = false,
+        .wp_viewporter         = NULL,
+        .fractional_scale_mgr  = NULL,
+        .running               = true,
+        .fractional_scale      = 0,
+        .result                = (struct rect){-1, -1, -1, -1},
+        .initial_area          = (struct rect){-1, -1, -1, -1},
         .home_row = (char *[]){"", "", "", "", "", "", "", "", "", "", ""},
         .click    = CLICK_NONE,
     };
@@ -863,6 +872,10 @@ int main(int argc, char **argv) {
     wl_compositor_destroy(state.wl_compositor);
     wl_registry_destroy(state.wl_registry);
     zwlr_layer_shell_v1_destroy(state.wl_layer_shell);
+
+    if (state.wl_screencopy_manager) {
+        zwlr_screencopy_manager_v1_destroy(state.wl_screencopy_manager);
+    }
 
     wl_display_disconnect(state.wl_display);
 
