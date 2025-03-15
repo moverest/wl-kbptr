@@ -1,1 +1,1 @@
-option('opencv', type: 'feature', value: 'enabled')
+option('opencv', type: 'feature', value: 'disabled')
