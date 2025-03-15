@@ -1,5 +1,5 @@
 #!/bin/bash
 
 active_area=$(swaymsg -t get_tree | jq --raw-output \
-	'.. | (.nodes? // empty)[] | select (.focused) | .rect | "\(.width)x\(.height)+\(.x)+\(.y)"')
-wl-kbptr --restrict "$active_area"
+	'.. | (.nodes? + .floating_nodes? // empty)[] | select (.focused) | .rect | "\(.width)x\(.height)+\(.x)+\(.y)"')
+wl-kbptr --restrict "$active_area" $@
