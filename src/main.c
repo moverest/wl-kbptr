@@ -291,9 +291,18 @@ handle_output_scale(void *data, struct wl_output *wl_output, int32_t scale) {
     output->scale         = scale;
 }
 
+static void handle_output_geometry(
+    void *data, struct wl_output *wl_output, int32_t x, int32_t y,
+    int32_t physical_width, int32_t physical_height, int32_t subpixel,
+    const char *make, const char *model, int32_t transform
+) {
+    struct output *output = data;
+    output->transform     = transform;
+}
+
 const static struct wl_output_listener output_listener = {
     .name        = noop,
-    .geometry    = noop,
+    .geometry    = handle_output_geometry,
     .mode        = noop,
     .scale       = handle_output_scale,
     .description = noop,

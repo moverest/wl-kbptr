@@ -13,6 +13,20 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+enum screen_capture_state {
+    CAPTURE_NOT_REQUESTED,
+    CAPTURE_REQUESTED,
+    CAPTURE_FAILED,
+    CAPTURE_SUCCESS,
+};
+
+struct scrcpy_state {
+    struct wl_shm                   *wl_shm;
+    struct zwlr_screencopy_frame_v1 *wl_screencopy_frame;
+    struct scrcpy_buffer            *scrcpy_buffer;
+    enum screen_capture_state        screen_capture_state;
+};
+
 static struct scrcpy_buffer *create_scrcpy_buffer(
     struct wl_shm *shm, enum wl_shm_format format, uint32_t width,
     uint32_t height, uint32_t stride
@@ -72,12 +86,6 @@ static void screencopy_frame_handle_buffer(
     zwlr_screencopy_frame_v1_copy(frame, state->scrcpy_buffer->wl_buffer);
 }
 
-static void screencopy_frame_handle_flags(
-    void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t flags
-) {
-    // TODO
-}
-
 static void screencopy_frame_handle_ready(
     void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t tv_sec_hi,
     uint32_t tv_sec_lo, uint32_t tv_nsec
@@ -98,7 +106,7 @@ static void noop() {}
 
 const struct zwlr_screencopy_frame_v1_listener screencopy_frame_listener = {
     .buffer       = screencopy_frame_handle_buffer,
-    .flags        = screencopy_frame_handle_flags,
+    .flags        = noop,
     .ready        = screencopy_frame_handle_ready,
     .failed       = screencopy_frame_handle_failed,
     .buffer_done  = noop,

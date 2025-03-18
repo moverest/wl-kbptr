@@ -54,17 +54,79 @@ static cv::Mat get_gray_scale_from_buffer(
     return grayed;
 }
 
+static void apply_transform(
+    cv::Mat &m, enum wl_output_transform transform, uint32_t &width,
+    uint32_t &height
+) {
+    cv::Mat tmp;
+    bool    switch_width_height = false;
+
+    switch (transform) {
+    case WL_OUTPUT_TRANSFORM_NORMAL:
+        break;
+
+    case WL_OUTPUT_TRANSFORM_90:
+        cv::rotate(m, tmp, cv::ROTATE_90_CLOCKWISE);
+        m                   = tmp;
+        switch_width_height = true;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_270:
+        cv::rotate(m, tmp, cv::ROTATE_90_COUNTERCLOCKWISE);
+        m                   = tmp;
+        switch_width_height = true;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_180:
+        cv::rotate(m, tmp, cv::ROTATE_180);
+        m = tmp;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
+        cv::flip(m, tmp, 1);
+        m = tmp;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+        cv::rotate(m, tmp, cv::ROTATE_90_CLOCKWISE);
+        cv::flip(tmp, m, 1);
+        switch_width_height = true;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        cv::rotate(m, tmp, cv::ROTATE_180);
+        cv::flip(tmp, m, 1);
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+        cv::rotate(m, tmp, cv::ROTATE_90_COUNTERCLOCKWISE);
+        cv::flip(tmp, m, 1);
+        switch_width_height = true;
+        break;
+    }
+
+    if (switch_width_height) {
+        uint32_t tmp = height;
+        height       = width;
+        width        = tmp;
+    }
+}
+
 int compute_target_from_img_buffer(
     void *data, uint32_t height, uint32_t width, uint32_t stride,
-    enum wl_shm_format format, struct rect initial_area, struct rect **areas
+    enum wl_shm_format format, enum wl_output_transform transform,
+    struct rect initial_area, struct rect **areas
 ) {
     cv::Mat m1 = get_gray_scale_from_buffer(data, height, width, format);
+    apply_transform(m1, transform, width, height);
 
-    double  scale = ((double)height) / ((double)initial_area.h);
-    cv::Mat m2, kernel;
+    double scale = ((double)height) / ((double)initial_area.h);
+
+    cv::Mat m2;
+    cv::Mat kernel =
+        cv::Mat::ones(round(2.5 * scale), round(3.5 * scale), CV_8U);
+
     cv::Canny(m1, m2, 70, 220);
-
-    kernel = cv::Mat::ones(round(2.5 * scale), round(3.5 * scale), CV_8U);
     cv::dilate(m2, m1, kernel);
 
     std::vector<std::vector<cv::Point>> contours;

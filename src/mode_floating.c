@@ -61,10 +61,13 @@ static void get_area_from_screenshot(
     area.h -= 2;
     area.w -= 2;
 
-    struct scrcpy_buffer *scrcpy_buffer = query_screenshot(state, area);
-    ms->num_areas                       = compute_target_from_img_buffer(
+    struct scrcpy_buffer    *scrcpy_buffer = query_screenshot(state, area);
+    enum wl_output_transform output_transform =
+        state->current_output->transform;
+    ms->num_areas = compute_target_from_img_buffer(
         scrcpy_buffer->data, scrcpy_buffer->height, scrcpy_buffer->width,
-        scrcpy_buffer->stride, scrcpy_buffer->format, area, &ms->areas
+        scrcpy_buffer->stride, scrcpy_buffer->format, output_transform, area,
+        &ms->areas
     );
     destroy_scrcpy_buffer(scrcpy_buffer);
 }

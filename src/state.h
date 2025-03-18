@@ -70,15 +70,16 @@ struct bisect_mode_state {
 };
 
 struct output {
-    struct wl_list         link; // type: struct output
-    struct wl_output      *wl_output;
-    struct zxdg_output_v1 *xdg_output;
-    char                  *name;
-    int32_t                scale;
-    int32_t                width;
-    int32_t                height;
-    int32_t                x;
-    int32_t                y;
+    struct wl_list           link; // type: struct output
+    struct wl_output        *wl_output;
+    struct zxdg_output_v1   *xdg_output;
+    char                    *name;
+    int32_t                  scale;
+    int32_t                  width;
+    int32_t                  height;
+    int32_t                  x;
+    int32_t                  y;
+    enum wl_output_transform transform;
 };
 
 struct seat {
