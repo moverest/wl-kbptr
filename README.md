@@ -33,6 +33,21 @@ If you are using Chimera Linux, you can install the [`wl-kbptr` package](https:/
 apk add chimera-repo-contrib
 apk add wl-kbptr
 ```
+### Fedora
+
+As of now there is no official package through dnf. So you will need to install the dependencies and then run the steps described in the **From sources** section.
+
+```bash
+sudo dnf install -y \
+    meson \
+    wayland-protocols-devel \
+    gcc \
+    libwayland-client  \
+    cmake \
+    wayland-devel \
+    libxkbcommon-devel \
+    cairo-devel
+```
 
 ### From sources
 
