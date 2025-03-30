@@ -58,6 +58,31 @@ static void send_frame(struct state *state) {
     wl_surface_commit(state->wl_surface);
 }
 
+/**
+ * Send a 1x1px transparent surface.
+ *
+ * This is used so that the surface is shown on the screen which triggers the
+ * `surface.enter()` event callback.
+ */
+static void send_transparent_frame(struct state *state) {
+    struct surface_buffer *surface_buffer =
+        get_next_buffer(state->wl_shm, &state->surface_buffer_pool, 1, 1);
+    if (surface_buffer == NULL) {
+        return;
+    }
+    surface_buffer->state = SURFACE_BUFFER_BUSY;
+    cairo_t *cairo        = surface_buffer->cairo;
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cairo, 0, 0, 0, 0);
+    cairo_fill(cairo);
+    wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
+    wp_viewport_set_destination(
+        state->wp_viewport, state->surface_width, state->surface_height
+    );
+    wl_surface_damage(state->wl_surface, 0, 0, 1, 1);
+    wl_surface_commit(state->wl_surface);
+}
+
 static void surface_callback_done(
     void *data, struct wl_callback *callback, uint32_t callback_data
 ) {
@@ -82,6 +107,43 @@ static void request_frame(struct state *state) {
         state->wl_surface_callback, &surface_callback_listener, state
     );
     wl_surface_commit(state->wl_surface);
+}
+
+bool compute_initial_area(struct state *state, struct rect *initial_area) {
+    if (initial_area->w == -1) {
+        initial_area->x = 0;
+        initial_area->y = 0;
+        initial_area->w = state->surface_width;
+        initial_area->h = state->surface_height;
+    } else {
+        if (initial_area->x < 0) {
+            initial_area->w += initial_area->x;
+            initial_area->x  = 0;
+        }
+
+        if (initial_area->y < 0) {
+            initial_area->h += initial_area->y;
+            initial_area->y  = 0;
+        }
+
+        if (initial_area->w + initial_area->x > state->current_output->width) {
+            initial_area->w = state->current_output->width - initial_area->x;
+        }
+
+        if (initial_area->h + initial_area->y > state->current_output->height) {
+            initial_area->h = state->current_output->height - initial_area->y;
+        }
+    }
+
+    if (initial_area->w <= 0 || initial_area->h <= 0) {
+        LOG_ERR(
+            "Initial area (%dx%d) is too small.", initial_area->w,
+            initial_area->h
+        );
+        return false;
+    }
+
+    return true;
 }
 
 static void noop() {}
@@ -354,6 +416,21 @@ static void load_xdg_outputs(struct state *state) {
     wl_display_roundtrip(state->wl_display);
 }
 
+static void enter_first_mode(struct state *state) {
+    if (state->current_mode == NO_MODE_ENTERED) {
+        if (!compute_initial_area(state, &state->initial_area)) {
+            state->running = false;
+            return;
+        }
+
+        enter_next_mode(state, state->initial_area);
+
+        if (state->running) {
+            send_frame(state);
+        }
+    }
+}
+
 static void handle_surface_enter(
     void *data, struct wl_surface *surface, struct wl_output *wl_output
 ) {
@@ -361,6 +438,8 @@ static void handle_surface_enter(
     struct output *output =
         find_output_from_wl_output(&state->outputs, wl_output);
     state->current_output = output;
+
+    enter_first_mode(state);
 }
 
 static const struct wl_surface_listener surface_listener = {
@@ -444,43 +523,6 @@ const struct wl_registry_listener wl_registry_listener = {
     .global_remove = noop,
 };
 
-bool compute_initial_area(struct state *state, struct rect *initial_area) {
-    if (initial_area->w == -1) {
-        initial_area->x = 0;
-        initial_area->y = 0;
-        initial_area->w = state->surface_width;
-        initial_area->h = state->surface_height;
-    } else {
-        if (initial_area->x < 0) {
-            initial_area->w += initial_area->x;
-            initial_area->x  = 0;
-        }
-
-        if (initial_area->y < 0) {
-            initial_area->h += initial_area->y;
-            initial_area->y  = 0;
-        }
-
-        if (initial_area->w + initial_area->x > state->current_output->width) {
-            initial_area->w = state->current_output->width - initial_area->x;
-        }
-
-        if (initial_area->h + initial_area->y > state->current_output->height) {
-            initial_area->h = state->current_output->height - initial_area->y;
-        }
-    }
-
-    if (initial_area->w <= 0 || initial_area->h <= 0) {
-        LOG_ERR(
-            "Initial area (%dx%d) is too small.", initial_area->w,
-            initial_area->h
-        );
-        return false;
-    }
-
-    return true;
-}
-
 static void handle_layer_surface_configure(
     void *data, struct zwlr_layer_surface_v1 *layer_surface, uint32_t serial,
     uint32_t width, uint32_t height
@@ -490,18 +532,13 @@ static void handle_layer_surface_configure(
     state->surface_height = height;
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 
-    if (state->current_mode == NO_MODE_ENTERED) {
-        if (!compute_initial_area(state, &state->initial_area)) {
-            state->running = false;
-            return;
-        }
-
-        enter_next_mode(state, state->initial_area);
-
-        if (state->running) {
-            send_frame(state);
-        }
+    if (state->current_output != NULL) {
+        enter_first_mode(state);
+    } else if (!state->surface_configured) {
+        send_transparent_frame(state);
     }
+
+    state->surface_configured = true;
 }
 
 static void handle_layer_surface_closed(
@@ -643,6 +680,7 @@ int main(int argc, char **argv) {
         .wl_surface          = NULL,
         .wl_surface_callback = NULL,
         .wl_layer_surface    = NULL,
+        .surface_configured  = false,
 #if OPENCV_ENABLED
         .wl_screencopy_manager = NULL,
 #endif

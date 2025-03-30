@@ -107,6 +107,7 @@ struct state {
     struct wl_surface                      *wl_surface;
     struct wl_callback                     *wl_surface_callback;
     struct zwlr_layer_surface_v1           *wl_layer_surface;
+    bool                                    surface_configured;
 #if OPENCV_ENABLED
     struct zwlr_screencopy_manager_v1 *wl_screencopy_manager;
 #endif

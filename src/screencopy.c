@@ -116,21 +116,6 @@ const struct zwlr_screencopy_frame_v1_listener screencopy_frame_listener = {
 
 struct scrcpy_buffer *
 query_screenshot(struct state *state, struct rect region) {
-    if (state->current_output == NULL) {
-        // FIXME
-        //
-        // Up until the surface is rendered, we don't really know which output
-        // it's going to end-up on. If no output is set, we just fail for now.
-        //
-        // One fix could be to just "render" an empty buffer to get the
-        // `surface.enter(output)` event and set the output before attempting a
-        // screenshot.
-        LOG_ERR("Missing output information. Can't capture the screen.");
-        LOG_ERR("You need to specify output with `--output` or specify a "
-                "region with `-r`.");
-        exit(1);
-    }
-
     struct scrcpy_state scrcpy_state;
     scrcpy_state.wl_shm = state->wl_shm;
 
