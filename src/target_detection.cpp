@@ -112,6 +112,96 @@ static void apply_transform(
     }
 }
 
+static void compute_rects(
+    const std::vector<std::vector<cv::Point>> &contours,
+    std::vector<cv::Rect2d> &rects, double scale, double x_off, double y_off
+) {
+    rects.clear();
+    rects.reserve(contours.size());
+
+    for (const std::vector<cv::Point> &contour : contours) {
+        cv::Rect rect = cv::boundingRect(contour);
+
+        rects.push_back(cv::Rect2d(
+            rect.x / scale + x_off, rect.y / scale + y_off, rect.width / scale,
+            rect.height / scale
+        ));
+    }
+}
+
+static size_t filter_rects(
+    const std::vector<cv::Rect2d> &rects,
+    const std::vector<cv::Vec4i> &hierachy, std::vector<bool> &filtered
+) {
+    filtered.assign(rects.size(), false);
+
+    for (size_t i = 0; i < rects.size(); i++) {
+        const auto &rect = rects[i];
+
+        if (rect.height >= 50 || rect.width >= 500 || rect.height <= 3 ||
+            rect.width <= 7) {
+            filtered[i] = true;
+            continue;
+        }
+    }
+
+    std::vector<int> to_explore;
+    for (size_t i = 0; i < rects.size(); i++) {
+        if (hierachy[i][3] >= 0) {
+            to_explore.push_back(i);
+        }
+    }
+
+    while (!to_explore.empty()) {
+        int i = to_explore.back();
+        to_explore.pop_back();
+
+        if (!filtered[i]) {
+            int parent_i = hierachy[i][3];
+            if (filtered[parent_i]) {
+                goto filtered;
+            }
+
+            const auto &rect = rects[i];
+            if (rect.height <= 7) {
+                filtered[i] = true;
+                goto filtered;
+            }
+
+            const auto &parent_rect = rects[parent_i];
+
+            const double center_x = rect.x + rect.width / 2.;
+            const double center_y = rect.y + rect.height / 2.;
+            const double parent_center_x =
+                parent_rect.x + parent_rect.width / 2.;
+            const double parent_center_y =
+                parent_rect.y + parent_rect.height / 2.;
+
+            if (abs(center_x - parent_center_x) < 7 &&
+                abs(center_y - parent_center_y) < 7) {
+                filtered[i] = true;
+                goto filtered;
+            }
+        }
+
+    filtered:
+        int child = hierachy[i][0];
+        while (child >= 0) {
+            to_explore.push_back(child);
+            child = hierachy[child][2];
+        }
+    }
+
+    size_t not_filtered_count = 0;
+    for (const auto &curr : filtered) {
+        if (!curr) {
+            not_filtered_count += 1;
+        }
+    }
+
+    return not_filtered_count;
+}
+
 int compute_target_from_img_buffer(
     void *data, uint32_t height, uint32_t width, uint32_t stride,
     enum wl_shm_format format, enum wl_output_transform transform,
@@ -130,38 +220,33 @@ int compute_target_from_img_buffer(
     cv::dilate(m2, m1, kernel);
 
     std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(m1, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    std::vector<cv::Vec4i>              hierachy;
+    cv::findContours(
+        m1, contours, hierachy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE
+    );
 
-    int areas_cap   = 256;
-    *areas          = (struct rect *)malloc(sizeof(struct rect) * areas_cap);
-    int areas_count = 0;
+    std::vector<cv::Rect2d> rects;
+    std::vector<bool>       filtered;
 
-    for (const std::vector<cv::Point> &contour : contours) {
-        cv::Rect rect = cv::boundingRect(contour);
+    compute_rects(contours, rects, scale, initial_area.x, initial_area.y);
+    int final_rect_count = filter_rects(rects, hierachy, filtered);
 
-        int x = round(rect.x / scale) + initial_area.x;
-        int y = round(rect.y / scale) + initial_area.y;
-        int h = round(rect.height / scale);
-        int w = round(rect.width / scale);
-
-        if (h >= 50 || w >= 500 || h <= 3 || w <= 7) {
+    size_t area_i = 0;
+    *areas = (struct rect *)malloc(sizeof(struct rect) * final_rect_count);
+    for (size_t i = 0; i < rects.size(); i++) {
+        if (filtered[i]) {
             continue;
         }
 
-        if (areas_count >= areas_cap) {
-            areas_cap *= 2;
-            *areas =
-                (struct rect *)realloc(*areas, sizeof(struct rect) * areas_cap);
-        }
+        const auto   rect = rects[i];
+        struct rect *area = &(*areas)[area_i];
+        area->x           = round(rect.x);
+        area->y           = round(rect.y);
+        area->w           = round(rect.width);
+        area->h           = round(rect.height);
 
-        struct rect *area = &(*areas)[areas_count];
-        area->x           = x;
-        area->y           = y;
-        area->w           = w;
-        area->h           = h;
-
-        areas_count++;
+        area_i++;
     }
 
-    return areas_count;
+    return final_rect_count;
 }
