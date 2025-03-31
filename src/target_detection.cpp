@@ -163,7 +163,10 @@ static size_t filter_rects(
             }
 
             const auto &rect = rects[i];
-            if (rect.height <= 7) {
+
+            // Inner targets that are flat are most likely lines forming an
+            // icon, e.g. a hamburger menu.
+            if (rect.height <= 6) {
                 filtered[i] = true;
                 goto filtered;
             }
@@ -177,8 +180,18 @@ static size_t filter_rects(
             const double parent_center_y =
                 parent_rect.y + parent_rect.height / 2.;
 
-            if (abs(center_x - parent_center_x) < 7 &&
-                abs(center_y - parent_center_y) < 7) {
+            // There's not much reasons to keep inner targets that have the same
+            // center as this is where the user is going to click most likely.
+            if (abs(center_x - parent_center_x) < 8 &&
+                abs(center_y - parent_center_y) < 8) {
+                filtered[i] = true;
+                goto filtered;
+            }
+
+            // If the parent target is a square, it's most likely a button with
+            // a single option or an icon.
+            if (abs(parent_rect.height - parent_rect.width) < 5 &&
+                parent_rect.height < 40 && parent_rect.width < 40) {
                 filtered[i] = true;
                 goto filtered;
             }
