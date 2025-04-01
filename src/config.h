@@ -1,6 +1,8 @@
 #ifndef __CONFIG_H_INCLUDED__
 #define __CONFIG_H_INCLUDED__
 
+#include "utils.h"
+
 #include <stdint.h>
 
 struct general_config {
@@ -52,11 +54,16 @@ struct mode_bisect_config {
     uint32_t history_border_color;
 };
 
+struct mode_click_config {
+    enum click button;
+};
+
 struct config {
     struct general_config       general;
     struct mode_tile_config     mode_tile;
     struct mode_floating_config mode_floating;
     struct mode_bisect_config   mode_bisect;
+    struct mode_click_config    mode_click;
 };
 
 /**

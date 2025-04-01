@@ -178,6 +178,28 @@ static int parse_floating_mode_source_value(void *dest, char *value) {
     return 0;
 }
 
+static int parse_click(void *dest, char *value) {
+    enum click *out = dest;
+    if (strcmp(value, "none") == 0) {
+        *out = CLICK_NONE;
+    } else if (strcmp(value, "left") == 0) {
+        *out = CLICK_LEFT_BTN;
+    } else if (strcmp(value, "right") == 0) {
+        *out = CLICK_RIGHT_BTN;
+    } else if (strcmp(value, "middle") == 0) {
+        *out = CLICK_MIDDLE_BTN;
+    } else {
+        LOG_ERR(
+            "Invalid click button '%s'. Should be 'left', 'right', 'middle' or "
+            "'none'.",
+            value
+        );
+        return 1;
+    }
+
+    return 0;
+}
+
 static void free_home_row_keys(void *field_value) {
     char ***home_row_keys_ptr = field_value;
     if (*home_row_keys_ptr == NULL) {
@@ -228,6 +250,8 @@ struct section_def {
     FIELD(struct mode_floating_config, name, default_value, parse, free)
 #define MB_FIELD(name, default_value, parse, free) \
     FIELD(struct mode_bisect_config, name, default_value, parse, free)
+#define MC_FIELD(name, default_value, parse, free) \
+    FIELD(struct mode_click_config, name, default_value, parse, free)
 
 static void noop() {}
 
@@ -278,6 +302,7 @@ static struct section_def section_defs[] = {
         MB_FIELD(odd_area_border_color, "#0048", parse_color, noop),
         MB_FIELD(history_border_color, "#3339", parse_color, noop)
     ),
+    SECTION(mode_click, MC_FIELD(button, "left", parse_click, noop)),
 };
 #pragma GCC diagnostic pop
 

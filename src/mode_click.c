@@ -1,7 +1,7 @@
 #include "mode.h"
 
 static void *click_mode_enter(struct state *state, struct rect area) {
-    state->click = CLICK_LEFT_BTN;
+    state->click = state->config.mode_click.button;
     enter_next_mode(state, area);
     return NULL;
 }

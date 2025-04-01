@@ -33,13 +33,6 @@
 #define MAX_NUM_MODES   3
 #define NO_MODE_ENTERED -1
 
-enum click {
-    CLICK_NONE = 0,
-    CLICK_LEFT_BTN,
-    CLICK_RIGHT_BTN,
-    CLICK_MIDDLE_BTN,
-};
-
 struct mode_interface;
 
 struct tile_mode_state {

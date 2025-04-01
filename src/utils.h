@@ -11,6 +11,13 @@ struct rect {
     int32_t h;
 };
 
+enum click {
+    CLICK_NONE = 0,
+    CLICK_LEFT_BTN,
+    CLICK_RIGHT_BTN,
+    CLICK_MIDDLE_BTN,
+};
+
 int max(int a, int b);
 int min(int a, int b);
 int find_str(char **strs, size_t len, char *to_find);
