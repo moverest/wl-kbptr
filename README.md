@@ -2,9 +2,21 @@
 
 `wl-kbptr` &mdash; short for Wayland Keyboard Pointer &mdash; is a utility to help move the mouse pointer with the keyboard.
 
-![demo](https://user-images.githubusercontent.com/19509728/235551237-c19a53ba-475f-4670-b9ec-2a84138094c9.gif)
+To enable this, it has different modes:
 
-It works in two phases: the screen is first in mapped with three letter labels and then the selected area is refined by bisecting it. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`. A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively.
+| `floating` mode with target detection |
+| --- |
+| ![Demo](https://github.com/user-attachments/assets/9561549c-96cb-4b35-8c81-a96c6e2d725f) |
+
+| `tile` mode |
+| --- |
+| ![Demo](https://github.com/user-attachments/assets/0c7de4fb-f525-428d-8051-941dc64417d8) |
+
+| `bisect` mode |
+| --- |
+| ![Demo](https://github.com/user-attachments/assets/ea1305e9-d798-4aa6-9bc1-6227dcbcff54) |
+
+By default, it uses the `tile` mode combined with the `bisect` mode: the screen is first in mapped with three letter labels and then the selected area is refined by bisecting it. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`. A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively.
 
 Note that your compositor needs to support the [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) and [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) protocols.
 
