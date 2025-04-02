@@ -19,7 +19,7 @@ These are set with the `modes` configuration field and can be chained, e.g. `wl-
 
 The `floating` mode uses arbitrary selection areas that can be passed by the user through the standard input. Each input line represents an area defined with the `wxh+x+y` format.
 
-The areas can also be automatically detected with by setting the `mode_floating.source` to `detect`, e.g. `wl-kbptr -o modes=floating,click -o mode_floating.source=detect`. This requires the `wl-kbptr` binary to be built with the `OPENCV` feature &mdash; `meson build --DOPENCV=enabled` &mdash; and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol.
+The areas can also be automatically detected with by setting the `mode_floating.source` to `detect`, e.g. `wl-kbptr -o modes=floating,click -o mode_floating.source=detect`. This requires the `wl-kbptr` binary to be built with the `opencv` feature &mdash; `meson build -Dopencv=enabled` &mdash; and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol.
 
 
 ### Tile mode
@@ -87,10 +87,10 @@ meson build
 meson compile -C build
 ```
 
-If you want to build the target detection feature (see [floating mode](floating-mode)), you need to enable the `OPENCV` feature:
+If you want to build the target detection feature (see [floating mode](floating-mode)), you need to enable the `opencv` feature:
 
 ```bash
-meson build --DOPENCV=enabled
+meson build -Dopencv=enabled
 meson compile -C build
 ```
 
@@ -185,7 +185,7 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
 - [`cairo`](https://cairographics.org)
 - [`wayland`](https://wayland.freedesktop.org)
 - [`wayland-protocols`](https://gitlab.freedesktop.org/wayland/wayland-protocols)
-- [`OpenCV`](https://opencv.org) and a C++ compiler if building with the `OPENCV` feature.
+- [`OpenCV`](https://opencv.org) and a C++ compiler if building with the `opencv` feature.
 
 
 ## License
