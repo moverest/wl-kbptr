@@ -5,33 +5,7 @@
 
 [general]
 home_row_keys=
-
-[mode_tile]
-label_color=#fffd
-label_select_color=#fd0d
-unselectable_bg_color=#2226
-selectable_bg_color=#0304
-selectable_border_color=#040c
-
-[mode_bisect]
-label_color=#fffd
-label_font_size=20
-label_padding=12
-pointer_size=20
-pointer_color=#e22d
-unselectable_bg_color=#2226
-even_area_bg_color=#0304
-even_area_border_color=#0408
-odd_area_bg_color=#0034
-odd_area_border_color=#0048
-history_border_color=#3339
-# wl-kbptr can be configured with a configuration file.
-# The file location can be passed with the -C parameter.
-# Othewise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will
-# be loaded if it exits. Below is the default configuration.
-
-[general]
-home_row_keys=
+modes=tile,bisect
 
 [mode_tile]
 label_color=#fffd
@@ -40,6 +14,17 @@ unselectable_bg_color=#2226
 selectable_bg_color=#0304
 selectable_border_color=#040c
 label_font_family=sans-serif
+label_symbols=abcdefghijklmnopqrstuvwxyz
+
+[mode_floating]
+source=stdin
+label_color=#fffd
+label_select_color=#fd0d
+unselectable_bg_color=#2226
+selectable_bg_color=#1718
+selectable_border_color=#040c
+label_font_family=sans-serif
+label_symbols=abcdefghijklmnopqrstuvwxyz
 
 [mode_bisect]
 label_color=#fffd
@@ -54,3 +39,6 @@ even_area_border_color=#0408
 odd_area_bg_color=#0034
 odd_area_border_color=#0048
 history_border_color=#3339
+
+[mode_click]
+button=left
