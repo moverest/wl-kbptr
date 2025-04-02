@@ -391,17 +391,19 @@ int config_loader_load_cli_param(struct config_loader *loader, char *value) {
         *(bc++) = *(c++);
     }
 
-    if (*c != '.') {
-        LOG_ERR("Invalid configuration parameter `%s`.", value);
-        return 1;
-    }
+    char *field_name;
 
-    *(bc++) = '\0';
-    c++;
+    if (*c == '.') {
+        *(bc++) = '\0';
+        c++;
 
-    char *field_name = bc;
-    while (*c != '\0' && *c != '=') {
-        *(bc++) = *(c++);
+        field_name = bc;
+        while (*c != '\0' && *c != '=') {
+            *(bc++) = *(c++);
+        }
+    } else {
+        field_name = section;
+        section    = "general";
     }
 
     if (*c != '=') {
