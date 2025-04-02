@@ -2,23 +2,40 @@
 
 `wl-kbptr` &mdash; short for Wayland Keyboard Pointer &mdash; is a utility to help move the mouse pointer with the keyboard.
 
-To enable this, it has different modes:
-
-| `floating` mode with target detection |
-| --- |
-| ![Demo](https://github.com/user-attachments/assets/9561549c-96cb-4b35-8c81-a96c6e2d725f) |
-
-| `tile` mode |
-| --- |
-| ![Demo](https://github.com/user-attachments/assets/0c7de4fb-f525-428d-8051-941dc64417d8) |
-
-| `bisect` mode |
-| --- |
-| ![Demo](https://github.com/user-attachments/assets/ea1305e9-d798-4aa6-9bc1-6227dcbcff54) |
-
-By default, it uses the `tile` mode combined with the `bisect` mode: the screen is first in mapped with three letter labels and then the selected area is refined by bisecting it. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`. A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively.
-
 Note that your compositor needs to support the [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) and [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) protocols.
+
+## Modes
+
+To enable to select a target and click, it has four different modes:
+- [`floating`](#floating-mode) &mdash; which uses arbitrary areas either given by the user or detected,
+- [`tile`](#tile-mode) &mdash; which uses a grid to select areas,
+- [`bisect`](#bisect-mode) &mdash; which enables to bisect an area,
+- and [`click`](#click-mode) &mdash; which triggers a click in the middle of an area.
+
+These are set with the `modes` configuration field and can be chained, e.g. `wl-kbptr -o modes=tile,bisect`.
+
+### Floating mode
+![Demo](https://github.com/user-attachments/assets/9561549c-96cb-4b35-8c81-a96c6e2d725f)
+
+The `floating` mode uses arbitrary selection areas that can be passed by the user through the standard input. Each input line represents an area defined with the `wxh+x+y` format.
+
+The areas can also be automatically detected with by setting the `mode_floating.source` to `detect`, e.g. `wl-kbptr -o modes=floating,click -o mode_floating.source=detect`. This requires the `wl-kbptr` binary to be built with the `OPENCV` feature &mdash; `meson build --DOPENCV=enabled` &mdash; and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol.
+
+
+### Tile mode
+![Demo](https://github.com/user-attachments/assets/0c7de4fb-f525-428d-8051-941dc64417d8)
+
+The `tile` mode displays a grid. To select an area, simply type the label associated with the tile you want to select.
+
+### Bisect mode
+![Demo](https://github.com/user-attachments/assets/ea1305e9-d798-4aa6-9bc1-6227dcbcff54)
+
+The `bisect` mode enables to bisect a given area. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`. A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively on a QWERTY keyboard layout. Note that other layout will use the same keys positions, e.g. `i`, `d`, and `x` with a Dvorak keyboard layout.
+
+
+### Click mode
+
+The `click` mode simply triggers a click in the middle of the selection area.
 
 ## Installation
 
@@ -70,6 +87,13 @@ meson build
 meson compile -C build
 ```
 
+If you want to build the target detection feature (see [floating mode](floating-mode)), you need to enable the `OPENCV` feature:
+
+```bash
+meson build --DOPENCV=enabled
+meson compile -C build
+```
+
 Then install with:
 
 ```bash
@@ -106,7 +130,8 @@ mode Mouse {
     bindsym Escape mode default
 }
 
-bindsym $mod+g mode Mouse
+bindsym $mod+g exec wl-kbptr-sway-active-win -o modes=floating','click -o mode_floating.source=detect
+bindsym $mod+Shift+g mode Mouse
 ```
 
 ### Hyprland
@@ -160,6 +185,7 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
 - [`cairo`](https://cairographics.org)
 - [`wayland`](https://wayland.freedesktop.org)
 - [`wayland-protocols`](https://gitlab.freedesktop.org/wayland/wayland-protocols)
+- [`OpenCV`](https://opencv.org) and a C++ compiler if building with the `OPENCV` feature.
 
 
 ## License
