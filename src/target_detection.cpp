@@ -4,15 +4,113 @@
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <pixman.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <wayland-client.h>
 
-static cv::Mat get_gray_scale_from_buffer(
-    void *data, uint32_t height, uint32_t width, enum wl_shm_format format
+static pixman_format_code_t get_pixman_format(enum wl_shm_format format) {
+    switch (format) {
+    case WL_SHM_FORMAT_RGB332:
+        return PIXMAN_r3g3b2;
+    case WL_SHM_FORMAT_BGR233:
+        return PIXMAN_b2g3r3;
+    case WL_SHM_FORMAT_ARGB4444:
+        return PIXMAN_a4r4g4b4;
+    case WL_SHM_FORMAT_XRGB4444:
+        return PIXMAN_x4r4g4b4;
+    case WL_SHM_FORMAT_ABGR4444:
+        return PIXMAN_a4b4g4r4;
+    case WL_SHM_FORMAT_XBGR4444:
+        return PIXMAN_x4b4g4r4;
+    case WL_SHM_FORMAT_ARGB1555:
+        return PIXMAN_a1r5g5b5;
+    case WL_SHM_FORMAT_XRGB1555:
+        return PIXMAN_x1r5g5b5;
+    case WL_SHM_FORMAT_ABGR1555:
+        return PIXMAN_a1b5g5r5;
+    case WL_SHM_FORMAT_XBGR1555:
+        return PIXMAN_x1b5g5r5;
+    case WL_SHM_FORMAT_RGB565:
+        return PIXMAN_r5g6b5;
+    case WL_SHM_FORMAT_BGR565:
+        return PIXMAN_b5g6r5;
+    case WL_SHM_FORMAT_RGB888:
+        return PIXMAN_r8g8b8;
+    case WL_SHM_FORMAT_BGR888:
+        return PIXMAN_b8g8r8;
+    case WL_SHM_FORMAT_ARGB8888:
+        return PIXMAN_a8r8g8b8;
+    case WL_SHM_FORMAT_XRGB8888:
+        return PIXMAN_x8r8g8b8;
+    case WL_SHM_FORMAT_ABGR8888:
+        return PIXMAN_a8b8g8r8;
+    case WL_SHM_FORMAT_XBGR8888:
+        return PIXMAN_x8b8g8r8;
+    case WL_SHM_FORMAT_BGRA8888:
+        return PIXMAN_b8g8r8a8;
+    case WL_SHM_FORMAT_BGRX8888:
+        return PIXMAN_b8g8r8x8;
+    case WL_SHM_FORMAT_RGBA8888:
+        return PIXMAN_r8g8b8a8;
+    case WL_SHM_FORMAT_RGBX8888:
+        return PIXMAN_r8g8b8x8;
+    case WL_SHM_FORMAT_ARGB2101010:
+        return PIXMAN_a2r10g10b10;
+    case WL_SHM_FORMAT_ABGR2101010:
+        return PIXMAN_a2b10g10r10;
+    case WL_SHM_FORMAT_XRGB2101010:
+        return PIXMAN_x2r10g10b10;
+    case WL_SHM_FORMAT_XBGR2101010:
+        return PIXMAN_x2b10g10r10;
+    default:
+        return (pixman_format_code_t)0;
+    }
+}
+
+static pixman_image_t *make_pixman_image_a8r8g8b8(
+    void *data, uint32_t width, uint32_t height, uint32_t stride,
+    enum wl_shm_format format
 ) {
-    cv::Mat buf;
-    int     in_out[3];
+    pixman_format_code_t pixman_format = get_pixman_format(format);
+    if (pixman_format == 0) {
+        LOG_ERR("Unsupported format 0x%08x.", format);
+        return NULL;
+    }
+
+    pixman_image_t *in_image = pixman_image_create_bits(
+        pixman_format, width, height, (uint32_t *)data, stride
+    );
+    if (in_image == NULL) {
+        LOG_ERR("Failed to create pixman image.");
+        return NULL;
+    }
+
+    pixman_image_t *out_image = pixman_image_create_bits(
+        PIXMAN_a8r8g8b8, width, height, NULL, width * height * 4
+    );
+    if (out_image == NULL) {
+        LOG_ERR("Failed to create (out) pixman image.");
+        return NULL;
+    }
+
+    pixman_image_composite32(
+        PIXMAN_OP_SRC, in_image, NULL, out_image, 0, 0, 0, 0, 0, 0, width,
+        height
+    );
+
+    pixman_image_unref(in_image);
+
+    return out_image;
+}
+
+static cv::Mat get_gray_scale_from_buffer(
+    void *data, uint32_t height, uint32_t width, uint32_t stride,
+    enum wl_shm_format format
+) {
+    pixman_image_t *image = NULL;
+    cv::Mat         buf;
+    int             in_out[3];
 
     switch (format) {
     case WL_SHM_FORMAT_ARGB8888:
@@ -32,8 +130,15 @@ static cv::Mat get_gray_scale_from_buffer(
         break;
 
     default:
-        LOG_ERR("Unsupported format (%o).", format);
-        exit(1);
+        image = make_pixman_image_a8r8g8b8(data, width, height, stride, format);
+        if (image == NULL) {
+            exit(1);
+        }
+        buf = cv::Mat(height, width, CV_8UC4, pixman_image_get_data(image));
+        in_out[0] = 1;
+        in_out[1] = 1;
+        in_out[2] = 2;
+        break;
     }
 
     cv::Mat in_channels[4];
@@ -50,6 +155,10 @@ static cv::Mat get_gray_scale_from_buffer(
 
     cv::Mat grayed;
     cv::cvtColor(out, grayed, cv::COLOR_BGR2GRAY);
+
+    if (image != NULL) {
+        pixman_image_unref(image);
+    }
 
     return grayed;
 }
@@ -220,7 +329,8 @@ int compute_target_from_img_buffer(
     enum wl_shm_format format, enum wl_output_transform transform,
     struct rect initial_area, struct rect **areas
 ) {
-    cv::Mat m1 = get_gray_scale_from_buffer(data, height, width, format);
+    cv::Mat m1 =
+        get_gray_scale_from_buffer(data, height, width, stride, format);
     apply_transform(m1, transform, width, height);
 
     double scale = ((double)height) / ((double)initial_area.h);

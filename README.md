@@ -185,7 +185,10 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
 - [`cairo`](https://cairographics.org)
 - [`wayland`](https://wayland.freedesktop.org)
 - [`wayland-protocols`](https://gitlab.freedesktop.org/wayland/wayland-protocols)
-- [`OpenCV`](https://opencv.org) and a C++ compiler if building with the `opencv` feature.
+- With the `opencv` feature enabled:
+  - C++ compiler
+  - [`OpenCV`](https://opencv.org)
+  - [`Pixman`](https://www.pixman.org)
 
 
 ## License

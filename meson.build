@@ -16,6 +16,7 @@ if use_opencv
   add_project_arguments('-DOPENCV_ENABLED=1', language: ['c', 'cpp'])
   add_languages('cpp')
   opencv = dependency('opencv4')
+  pixman = dependency('pixman-1')
 endif
 
 wayland_client = dependency('wayland-client')
@@ -54,7 +55,7 @@ if use_opencv
     'src/screencopy.c',
     'src/target_detection.cpp',
   ]
-  dependencies += [opencv]
+  dependencies += [opencv, pixman]
 endif
 
 executable(
