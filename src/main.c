@@ -661,6 +661,7 @@ static void print_usage() {
 
     puts(" -h, --help          show this help");
     puts(" --help-config       show help on configuration");
+    puts(" -v, --version       show version");
     puts(" -c, --config=FILE   use given configuration file");
     puts(" -r, --restrict=AREA restrict to given area (wxh+x+y)");
     puts(" -o, --option        set configuration option");
@@ -668,6 +669,14 @@ static void print_usage() {
     puts(
         " -p, --print-only    only print the requested mouse movement and click"
     );
+}
+
+static void print_version() {
+    printf("wl-kbptr %s", VERSION);
+#if OPENCV_ENABLED
+    printf(" (opencv)");
+#endif
+    puts("");
 }
 
 int main(int argc, char **argv) {
@@ -701,6 +710,7 @@ int main(int argc, char **argv) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"help-config", no_argument, 0, 'H'},
+        {"version", no_argument, 0, 'v'},
         {"restrict", required_argument, 0, 'r'},
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
@@ -718,6 +728,10 @@ int main(int argc, char **argv) {
         switch (option_char) {
         case 'h':
             print_usage();
+            return 0;
+
+        case 'v':
+            print_version();
             return 0;
 
         case 'r':

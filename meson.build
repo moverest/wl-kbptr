@@ -4,12 +4,13 @@ project(
   meson_version: '>=0.60.0',
   default_options: ['c_std=c11'],
   license: 'GPL-3.0',
-  version: '0.2.3',
+  version: '0.3.0',
 )
 
 use_opencv = get_option('opencv').enabled()
 
 add_project_arguments('-D_GNU_SOURCE=200809L', language: 'c')
+add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'c')
 cc = meson.get_compiler('c')
 
 if use_opencv
