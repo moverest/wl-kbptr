@@ -1,7 +1,7 @@
 project(
   'wl-kbptr',
   'c',
-  meson_version: '>=0.60.0',
+  meson_version: '>=1.1',
   default_options: ['c_std=c11'],
   license: 'GPL-3.0',
   version: '0.3.0',
