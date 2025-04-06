@@ -15,7 +15,7 @@ cc = meson.get_compiler('c')
 
 if use_opencv
   add_project_arguments('-DOPENCV_ENABLED=1', language: ['c', 'cpp'])
-  add_languages('cpp')
+  add_languages('cpp', native: false)
   opencv = dependency('opencv4')
   pixman = dependency('pixman-1')
 endif
