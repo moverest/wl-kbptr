@@ -2,7 +2,7 @@
 
 `wl-kbptr` &mdash; short for Wayland Keyboard Pointer &mdash; is a utility to help move the mouse pointer with the keyboard.
 
-Note that your compositor needs to support the [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) and [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) protocols.
+See [Supported compositors](#supported-compositors) section for compatibility.
 
 ## Modes
 
@@ -36,6 +36,23 @@ The `bisect` mode enables to bisect a given area. At any point the cursor can be
 ### Click mode
 
 The `click` mode simply triggers a click in the middle of the selection area.
+
+## Supported compositors
+
+For `wl-kbptr` to work, it requires the following protocols:
+ - [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) for the program to be displays on top,
+ - [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) to control the mouse pointer,
+ - and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) (optional) to capture the screen for target detection in the `floating` mode.
+
+Here are the compositors with which it has been tested:
+
+| Compositor | Supported | Notes |
+| ---------- | --------- | ----- |
+| Sway       | ✅        | -     |
+| Hyprland   | ✅        | -     |
+| Niri       | ✅        | An initial area needs to be specified with `-r` or `--restrict`, e.g. `-r 10000x10000+0+0`. |
+| KDE        | ❗        | The compositor doesn't support the [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocols. It can still work with the `--print-only` option and the cursor pointer can then be moved with `ydotool` or similar. |
+| Mutter     | ❌        | The compositor doesn't support any of the required protocols. |
 
 ## Installation
 
