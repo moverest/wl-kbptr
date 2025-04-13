@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 active_area=$(swaymsg -t get_tree | jq --raw-output \
 	'.. | (.nodes? + .floating_nodes? // empty)[] | select (.focused) | .rect | "\(.width)x\(.height)+\(.x)+\(.y)"')
