@@ -46,13 +46,13 @@ For `wl-kbptr` to work, it requires the following protocols:
 
 Here are the compositors with which it has been tested:
 
-| Compositor | Supported | Notes |
-| ---------- | --------- | ----- |
-| [Sway](https://swaywm.org) | ✅        | -     |
-| [Hyprland](https://hyprland.org) | ✅        | -     |
-| [Niri](https://github.com/YaLTeR/niri) | ✅        | An initial area needs to be specified with `-r` or `--restrict`, e.g. `-r 10000x10000+0+0`. |
-| [KWin](https://github.com/KDE/kwin) | ❗        | The compositor doesn't support the [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocols. It can still work with the `--print-only` option and the mouse pointer can then be moved with `ydotool` or similar. |
-| [Mutter](https://mutter.gnome.org) | ❌        | The compositor doesn't support any of the required protocols. |
+| Compositor |     | Notes |
+| ---------- | --- | ----- |
+| [Sway](https://swaywm.org) | ✅ | - |
+| [Hyprland](https://hyprland.org) | ✅ | - |
+| [Niri](https://github.com/YaLTeR/niri) | ✅ | - |
+| [KWin](https://github.com/KDE/kwin) | ❗ | The compositor doesn't support the [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocols. It can still work with the `--print-only` option and the mouse pointer can then be moved with `ydotool` or similar. |
+| [Mutter](https://mutter.gnome.org) | ❌ | The compositor doesn't support any of the required protocols. |
 
 ## Installation
 
