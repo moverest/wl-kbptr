@@ -439,7 +439,9 @@ static void handle_surface_enter(
         find_output_from_wl_output(&state->outputs, wl_output);
     state->current_output = output;
 
-    enter_first_mode(state);
+    if (state->surface_configured) {
+        enter_first_mode(state);
+    }
 }
 
 static const struct wl_surface_listener surface_listener = {
