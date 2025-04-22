@@ -136,55 +136,6 @@ static void division_4_or_8_render(
             cairo_stroke(cairo);
         }
     }
-
-    cairo_select_font_face(
-        cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
-        CAIRO_FONT_WEIGHT_NORMAL
-    );
-    cairo_set_font_size(cairo, config->label_font_size);
-    cairo_set_source_u32(cairo, config->label_color);
-    char label[64];
-
-    // Top label
-    if (divide_8) {
-        snprintf(
-            label, sizeof(label), "%s %s %s %s", state->home_row[0],
-            state->home_row[1], state->home_row[2], state->home_row[3]
-        );
-    } else {
-        snprintf(
-            label, sizeof(label), "%s %s", state->home_row[0],
-            state->home_row[1]
-        );
-    }
-
-    cairo_text_extents_t te;
-    cairo_text_extents(cairo, label, &te);
-    cairo_move_to(
-        cairo, area->x + (int)(area->w / 2) - (int)(te.width / 2),
-        area->y - config->label_padding
-    );
-    cairo_show_text(cairo, label);
-
-    // Bottom label
-    if (divide_8) {
-        snprintf(
-            label, sizeof(label), "%s %s %s %s", state->home_row[4],
-            state->home_row[5], state->home_row[6], state->home_row[7]
-        );
-    } else {
-        snprintf(
-            label, sizeof(label), "%s %s", state->home_row[2],
-            state->home_row[3]
-        );
-    }
-
-    cairo_text_extents(cairo, label, &te);
-    cairo_move_to(
-        cairo, area->x + (int)(area->w / 2) - (int)(te.width / 2),
-        area->y + area->h + te.height + config->label_padding
-    );
-    cairo_show_text(cairo, label);
 }
 
 static bool division_4_or_8_idx_to_rect(
@@ -231,23 +182,6 @@ static void division_horizontal_render(
     cairo_move_to(cairo, area->x + (int)(area->w / 2) + .5, area->y + .5);
     cairo_line_to(cairo, area->x + area->w + .5, area->y + .5);
     cairo_stroke(cairo);
-
-    cairo_set_source_u32(cairo, config->label_color);
-
-    cairo_text_extents_t te;
-    cairo_text_extents(cairo, state->home_row[0], &te);
-    cairo_move_to(
-        cairo, area->x - config->label_padding - te.width,
-        area->y + te.height / 2
-    );
-    cairo_show_text(cairo, state->home_row[0]);
-
-    cairo_text_extents(cairo, state->home_row[1], &te);
-    cairo_move_to(
-        cairo, area->x + area->w + config->label_padding,
-        area->y + te.height / 2
-    );
-    cairo_show_text(cairo, state->home_row[1]);
 }
 
 static bool division_horizontal_idx_to_rect(
@@ -283,22 +217,6 @@ static void division_vertical_render(
     cairo_move_to(cairo, area->x + .5, area->y + .5 + (int)(area->h / 2));
     cairo_line_to(cairo, area->x + .5, area->y + .5 + area->h);
     cairo_stroke(cairo);
-
-    cairo_set_source_u32(cairo, config->label_color);
-
-    cairo_text_extents_t te;
-    cairo_text_extents(cairo, state->home_row[0], &te);
-    cairo_move_to(
-        cairo, area->x - te.width / 2, area->y - config->label_padding
-    );
-    cairo_show_text(cairo, state->home_row[0]);
-
-    cairo_text_extents(cairo, state->home_row[1], &te);
-    cairo_move_to(
-        cairo, area->x - te.width / 2,
-        area->y + area->h + config->label_padding + te.height
-    );
-    cairo_show_text(cairo, state->home_row[1]);
 }
 
 static bool division_vertical_idx_to_rect(
