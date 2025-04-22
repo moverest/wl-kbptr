@@ -4,115 +4,36 @@
 #include "utils.h"
 #include "utils_cairo.h"
 
-#include <math.h>
 #include <stdlib.h>
-#include <string.h>
 
-#define DIVIDE_8_RATIO 1.8
-
-enum bisect_division {
-    /*
-     * The tiling mode should give us areas that are twice as wide as they are
-     * tall. In this case, we want to divide the area in 8 instead of 4 as to
-     * then get equal square areas.
-     *
-     *  +--+--+--+--+
-     *  | 0| 1| 2| 3|
-     *  +--+--+--+--+
-     *  | 4| 5| 6| 7|
-     *  +--+--+--+--+
-     */
-    DIVISION_8 = 0,
-    /*
-     * After the first pass, we should only get mostly square areas.
-     *
-     *  +--+--+
-     *  | 0| 1|
-     *  +--+--+
-     *  | 2| 3|
-     *  +--+--+
-     */
-    DIVISION_4,
-    /*
-     * Once we have divide the areas enough times, we will end up with a line,
-     * i.e. a area with a width or height of a single pixel. In this case we
-     * divide the area in two.
-     *
-     *    0  1
-     *  +--+--+
-     */
-    DIVISION_HORIZONTAL,
-    /*
-     *    +
-     *    | 0
-     *    +
-     *    | 1
-     *    +
-     */
-    DIVISION_VERTICAL,
-    /*
-     * Given enough divisions, we should end up with a single pixel.
-     *
-     *    +
-     */
-    UNDIVIDABLE,
+// Split direction -- defines the "shrink" direction of the rectangle
+enum split_dir {
+    SPLIT_DIR_DOWN,
+    SPLIT_DIR_UP,
+    SPLIT_DIR_LEFT,
+    SPLIT_DIR_RIGHT,
 };
 
 void *split_mode_enter(struct state *state, struct rect area) {
     struct split_mode_state *ms = malloc(sizeof(struct split_mode_state));
     ms->areas[0]                = area;
     ms->current                 = 0;
-
     return ms;
 }
 
-static enum bisect_division determine_division(struct rect *area) {
-    if (area->w <= 1 && area->h <= 1) {
-        return UNDIVIDABLE;
-    }
+static void
+split_mode_render_grid(struct state *state, void *mode_state, cairo_t *cairo) {
+    struct mode_split_config *config              = &state->config.mode_split;
+    struct split_mode_state  *ms                  = mode_state;
+    struct rect              *area                = &ms->areas[ms->current];
+    const int                 ngrid               = 2;
+    const int                 sub_area_width      = area->w / ngrid;
+    const int                 sub_area_width_off  = area->w % ngrid;
+    const int                 sub_area_height     = area->h / ngrid;
+    const int                 sub_area_height_off = area->h % ngrid;
 
-    if (area->w <= 1) {
-        return DIVISION_VERTICAL;
-    }
-
-    if (area->h <= 1) {
-        return DIVISION_HORIZONTAL;
-    }
-
-    return area->w > area->h * DIVIDE_8_RATIO ? DIVISION_8 : DIVISION_4;
-}
-
-struct division_interface {
-    void (*render)(enum bisect_division, struct state *, struct split_mode_state *ms, cairo_t *);
-
-    // `idx_to_sub_area` returns the sub-area indicated by the given index in
-    // `rect` while also returning true. If the index does map to a sub-area,
-    // `rect` is left unchanged and it returns false.
-    bool (*idx_to_sub_area)(
-        enum bisect_division, int idx, struct rect *current_area,
-        struct rect *new_area
-    );
-};
-
-static void division_4_or_8_render(
-    enum bisect_division division, struct state *state,
-    struct split_mode_state *ms, cairo_t *cairo
-) {
-    struct mode_split_config *config = &state->config.mode_split;
-    struct rect              *area   = &ms->areas[ms->current];
-
-    bool divide_8 = division == DIVISION_8;
-
-    const int sub_area_columns = divide_8 ? 4 : 2;
-    const int sub_area_rows    = 2;
-
-    const int sub_area_width      = area->w / sub_area_columns;
-    const int sub_area_width_off  = area->w % sub_area_columns;
-    const int sub_area_height     = area->h / sub_area_rows;
-    const int sub_area_height_off = area->h % sub_area_rows;
-
-    for (int i = 0; i < sub_area_columns; i++) {
-        for (int j = 0; j < sub_area_rows; j++) {
+    for (int i = 0; i < ngrid; i++) {
+        for (int j = 0; j < ngrid; j++) {
             const int x =
                 area->x + i * sub_area_width + min(i, sub_area_width_off);
             const int y =
@@ -138,165 +59,12 @@ static void division_4_or_8_render(
     }
 }
 
-static bool division_4_or_8_idx_to_rect(
-    enum bisect_division division, int idx, struct rect *area, struct rect *rect
+static void split_mode_render_cursor(
+    struct state *state, void *mode_state, cairo_t *cairo
 ) {
-    bool divide_8 = division == DIVISION_8;
-    if (!divide_8 && idx >= 4) {
-        return false;
-    }
-
-    const int sub_area_columns = divide_8 ? 4 : 2;
-    const int sub_area_rows    = 2;
-
-    const int sub_area_width      = area->w / sub_area_columns;
-    const int sub_area_width_off  = area->w % sub_area_columns;
-    const int sub_area_height     = area->h / sub_area_rows;
-    const int sub_area_height_off = area->h % sub_area_rows;
-
-    const int i = idx % sub_area_columns;
-    const int j = idx / sub_area_columns;
-
-    rect->x = area->x + i * sub_area_width + min(i, sub_area_width_off);
-    rect->y = area->y + j * sub_area_height + min(j, sub_area_height_off);
-    rect->w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
-    rect->h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
-
-    return true;
-}
-
-static void division_horizontal_render(
-    enum bisect_division division, struct state *state,
-    struct split_mode_state *ms, cairo_t *cairo
-) {
-    struct mode_split_config *config = &state->config.mode_split;
-    struct rect               *area   = &ms->areas[ms->current];
-
-    cairo_set_source_u32(cairo, config->even_area_border_color);
-    cairo_set_line_width(cairo, 1);
-    cairo_move_to(cairo, area->x + .5, area->y + .5);
-    cairo_line_to(cairo, area->x + (int)(area->w / 2) - .5, area->y + .5);
-    cairo_stroke(cairo);
-
-    cairo_set_source_u32(cairo, config->odd_area_border_color);
-    cairo_move_to(cairo, area->x + (int)(area->w / 2) + .5, area->y + .5);
-    cairo_line_to(cairo, area->x + area->w + .5, area->y + .5);
-    cairo_stroke(cairo);
-}
-
-static bool division_horizontal_idx_to_rect(
-    enum bisect_division division, int idx, struct rect *area, struct rect *rect
-) {
-    if (idx > 1) {
-        return false;
-    }
-
-    rect->x = area->x + idx * area->w / 2;
-    rect->y = area->y;
-    rect->w = area->w / 2;
-    rect->h = area->h;
-
-    return true;
-}
-
-static void division_vertical_render(
-    enum bisect_division division, struct state *state,
-    struct split_mode_state *ms, cairo_t *cairo
-) {
-
-    struct mode_split_config *config = &state->config.mode_split;
-    struct rect              *area   = &ms->areas[ms->current];
-
-    cairo_set_source_u32(cairo, config->even_area_border_color);
-    cairo_set_line_width(cairo, 1);
-    cairo_move_to(cairo, area->x + .5, area->y + .5);
-    cairo_line_to(cairo, area->x + .5, area->y - .5 + (int)(area->h / 2));
-    cairo_stroke(cairo);
-
-    cairo_set_source_u32(cairo, config->odd_area_border_color);
-    cairo_move_to(cairo, area->x + .5, area->y + .5 + (int)(area->h / 2));
-    cairo_line_to(cairo, area->x + .5, area->y + .5 + area->h);
-    cairo_stroke(cairo);
-}
-
-static bool division_vertical_idx_to_rect(
-    enum bisect_division division, int idx, struct rect *area, struct rect *rect
-) {
-    if (idx > 1) {
-        return false;
-    }
-
-    rect->x = area->x;
-    rect->y = area->y + idx * area->h / 2;
-    rect->w = area->w;
-    rect->h = area->h / 2;
-
-    return true;
-}
-
-static void undividable_render(
-    enum bisect_division division, struct state *state,
-    struct split_mode_state *ms, cairo_t *cairo
-) {
-    struct mode_split_config *config = &state->config.mode_split;
-    struct rect              *area   = &ms->areas[ms->current];
-
-    cairo_set_source_u32(cairo, config->pointer_color);
-    cairo_arc(
-        cairo, area->x + .5, area->y + .5, config->pointer_size / 4., 0,
-        2 * M_PI
-    );
-    cairo_set_line_width(cairo, 1);
-    cairo_stroke(cairo);
-}
-
-static bool undividable_select_idx() {
-    return false;
-}
-
-static const struct division_interface division_interfaces[] = {
-    [DIVISION_8] =
-        {.render          = division_4_or_8_render,
-         .idx_to_sub_area = division_4_or_8_idx_to_rect},
-    [DIVISION_4] =
-        {.render          = division_4_or_8_render,
-         .idx_to_sub_area = division_4_or_8_idx_to_rect},
-    [DIVISION_VERTICAL] =
-        {.render          = division_vertical_render,
-         .idx_to_sub_area = division_vertical_idx_to_rect},
-    [DIVISION_HORIZONTAL] =
-        {.render          = division_horizontal_render,
-         .idx_to_sub_area = division_horizontal_idx_to_rect},
-    [UNDIVIDABLE] =
-        {.render = undividable_render, .idx_to_sub_area = undividable_select_idx
-        },
-};
-
-static void
-split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     struct mode_split_config *config = &state->config.mode_split;
     struct split_mode_state  *ms     = mode_state;
     struct rect              *area   = &ms->areas[ms->current];
-
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_u32(cairo, config->unselectable_bg_color);
-    cairo_paint(cairo);
-
-    cairo_set_source_u32(cairo, config->history_border_color);
-    cairo_set_line_width(cairo, 1);
-
-    for (int i = 0; i < ms->current; i++) {
-        struct rect *area = &ms->areas[i];
-        cairo_rectangle(
-            cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
-        );
-        cairo_stroke(cairo);
-    }
-
-    if (ms->current < BISECT_MAX_HISTORY) {
-        enum bisect_division division = determine_division(area);
-        division_interfaces[division].render(division, state, ms, cairo);
-    }
 
     cairo_set_line_width(cairo, 1);
     cairo_set_source_u32(cairo, config->pointer_color);
@@ -316,6 +84,79 @@ split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
         cairo, pointer_x + (int)(config->pointer_size / 2) + .5, pointer_y + .5
     );
     cairo_stroke(cairo);
+}
+
+static void
+split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
+    struct mode_split_config *config = &state->config.mode_split;
+    struct split_mode_state  *ms     = mode_state;
+
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_u32(cairo, config->unselectable_bg_color);
+    cairo_paint(cairo);
+
+    cairo_set_source_u32(cairo, config->history_border_color);
+    cairo_set_line_width(cairo, 1);
+
+    for (int i = 0; i < ms->current; i++) {
+        struct rect *area = &ms->areas[i];
+        cairo_rectangle(
+            cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
+        );
+        cairo_stroke(cairo);
+    }
+
+    split_mode_render_grid(state, mode_state, cairo);
+    split_mode_render_cursor(state, mode_state, cairo);
+}
+
+static bool
+split_mode_split(struct state *state, void *mode_state, enum split_dir dir) {
+    struct split_mode_state *ms = mode_state;
+
+    if (ms->current + 1 >= SPLIT_MAX_HISTORY) {
+        return false;
+    }
+
+    struct rect *area     = &ms->areas[ms->current];
+    struct rect *new_area = &ms->areas[ms->current + 1];
+
+    *new_area = *area;
+
+    switch (dir) {
+    case SPLIT_DIR_RIGHT:
+        if (area->w <= 1) {
+            return false; /* Cannot split further */
+        }
+        new_area->w  = area->w / 2;
+        new_area->x += new_area->w;
+        break;
+
+    case SPLIT_DIR_LEFT:
+        if (area->w <= 1) {
+            return false; /* Cannot split further */
+        }
+        new_area->w = area->w / 2;
+        break;
+
+    case SPLIT_DIR_UP:
+        if (area->h <= 1) {
+            return false; /* Cannot split further */
+        }
+        new_area->h = area->h / 2;
+        break;
+
+    case SPLIT_DIR_DOWN:
+        if (area->h <= 1) {
+            return false; /* Cannot split further */
+        }
+        new_area->h  = area->h / 2;
+        new_area->y += new_area->h;
+        break;
+    }
+
+    ms->current++;
+    return true;
 }
 
 static bool split_mode_key(
@@ -341,47 +182,17 @@ static bool split_mode_key(
         }
         return true;
 
-    default:
-        if (ms->current + 1 >= BISECT_MAX_HISTORY) {
-            return false;
-        }
+    case XKB_KEY_Left:
+        return split_mode_split(state, mode_state, SPLIT_DIR_LEFT);
 
-        struct rect         *area     = &ms->areas[ms->current];
-        enum bisect_division division = determine_division(area);
+    case XKB_KEY_Right:
+        return split_mode_split(state, mode_state, SPLIT_DIR_RIGHT);
 
-        int matched_i = find_str(state->home_row, HOME_ROW_LEN_WITH_BTN, text);
-        if (matched_i < 0) {
-            return false;
-        }
+    case XKB_KEY_Up:
+        return split_mode_split(state, mode_state, SPLIT_DIR_UP);
 
-        if (matched_i >= HOME_ROW_LEN) {
-            switch (matched_i) {
-            case HOME_ROW_LEFT_CLICK:
-                state->click = CLICK_LEFT_BTN;
-                break;
-            case HOME_ROW_RIGHT_CLICK:
-                state->click = CLICK_RIGHT_BTN;
-                break;
-            case HOME_ROW_MIDDLE_CLICK:
-                state->click = CLICK_MIDDLE_BTN;
-                break;
-            }
-
-            enter_next_mode(state, ms->areas[ms->current]);
-            return false;
-        }
-
-        if (division == UNDIVIDABLE) {
-            return false;
-        }
-
-        struct rect *new_area = &ms->areas[ms->current + 1];
-        if (division_interfaces[division].idx_to_sub_area(
-                division, matched_i, area, new_area
-            )) {
-            ms->current++;
-            return true;
-        }
+    case XKB_KEY_Down:
+        return split_mode_split(state, mode_state, SPLIT_DIR_DOWN);
     }
 
     return false;
