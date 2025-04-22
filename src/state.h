@@ -30,6 +30,9 @@
 // pixels.
 #define BISECT_MAX_HISTORY 16
 
+// Split history of up to a resolution of 65536x65536
+#define SPLIT_MAX_HISTORY 32
+
 #define MAX_NUM_MODES   3
 #define NO_MODE_ENTERED -1
 
@@ -59,6 +62,11 @@ struct floating_mode_state {
 
 struct bisect_mode_state {
     struct rect areas[BISECT_MAX_HISTORY];
+    int         current;
+};
+
+struct split_mode_state {
+    struct rect areas[SPLIT_MAX_HISTORY];
     int         current;
 };
 

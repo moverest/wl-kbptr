@@ -254,6 +254,8 @@ struct section_def {
     FIELD(struct mode_floating_config, name, default_value, parse, free)
 #define MB_FIELD(name, default_value, parse, free) \
     FIELD(struct mode_bisect_config, name, default_value, parse, free)
+#define MS_FIELD(name, default_value, parse, free) \
+    FIELD(struct mode_split_config, name, default_value, parse, free)
 #define MC_FIELD(name, default_value, parse, free) \
     FIELD(struct mode_click_config, name, default_value, parse, free)
 
@@ -305,6 +307,16 @@ static struct section_def section_defs[] = {
         MB_FIELD(odd_area_bg_color, "#0034", parse_color, noop),
         MB_FIELD(odd_area_border_color, "#0048", parse_color, noop),
         MB_FIELD(history_border_color, "#3339", parse_color, noop)
+    ),
+    SECTION(
+        mode_split, MS_FIELD(pointer_size, "20", parse_double, noop),
+        MS_FIELD(pointer_color, "#e22d", parse_color, noop),
+        MS_FIELD(unselectable_bg_color, "#2226", parse_color, noop),
+        MS_FIELD(even_area_bg_color, "#0304", parse_color, noop),
+        MS_FIELD(even_area_border_color, "#0408", parse_color, noop),
+        MS_FIELD(odd_area_bg_color, "#0034", parse_color, noop),
+        MS_FIELD(odd_area_border_color, "#0048", parse_color, noop),
+        MS_FIELD(history_border_color, "#3339", parse_color, noop)
     ),
     SECTION(mode_click, MC_FIELD(button, "left", parse_click, noop)),
 };

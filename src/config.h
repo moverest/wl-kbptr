@@ -54,6 +54,24 @@ struct mode_bisect_config {
     uint32_t history_border_color;
 };
 
+struct mode_split_config {
+    uint32_t label_color;
+    double   label_font_size;
+    char    *label_font_family;
+    double   label_padding;
+
+    double  pointer_size;
+    int32_t pointer_color;
+
+    uint32_t unselectable_bg_color;
+    uint32_t even_area_bg_color;
+    uint32_t even_area_border_color;
+    uint32_t odd_area_bg_color;
+    uint32_t odd_area_border_color;
+
+    uint32_t history_border_color;
+};
+
 struct mode_click_config {
     enum click button;
 };
@@ -63,6 +81,7 @@ struct config {
     struct mode_tile_config     mode_tile;
     struct mode_floating_config mode_floating;
     struct mode_bisect_config   mode_bisect;
+    struct mode_split_config    mode_split;
     struct mode_click_config    mode_click;
 };
 
