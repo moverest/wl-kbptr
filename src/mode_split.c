@@ -21,44 +21,6 @@ void *split_mode_enter(struct state *state, struct rect area) {
     return ms;
 }
 
-static void
-split_mode_render_grid(struct state *state, void *mode_state, cairo_t *cairo) {
-    struct mode_split_config *config              = &state->config.mode_split;
-    struct split_mode_state  *ms                  = mode_state;
-    struct rect              *area                = &ms->areas[ms->current];
-    const int                 ngrid               = 2;
-    const int                 sub_area_width      = area->w / ngrid;
-    const int                 sub_area_width_off  = area->w % ngrid;
-    const int                 sub_area_height     = area->h / ngrid;
-    const int                 sub_area_height_off = area->h % ngrid;
-
-    for (int i = 0; i < ngrid; i++) {
-        for (int j = 0; j < ngrid; j++) {
-            const int x =
-                area->x + i * sub_area_width + min(i, sub_area_width_off);
-            const int y =
-                area->y + j * sub_area_height + min(j, sub_area_height_off);
-            const int w = sub_area_width + (i < sub_area_width_off ? 1 : 0);
-            const int h = sub_area_height + (j < sub_area_height_off ? 1 : 0);
-
-            cairo_set_source_u32(
-                cairo, (i + j) % 2 == 0 ? config->even_area_bg_color
-                                        : config->odd_area_bg_color
-            );
-            cairo_rectangle(cairo, x, y, w, h);
-            cairo_fill(cairo);
-
-            cairo_set_line_width(cairo, 1);
-            cairo_rectangle(cairo, x + .5, y + .5, w - 1, h - 1);
-            cairo_set_source_u32(
-                cairo, (i + j) % 2 == 0 ? config->even_area_border_color
-                                        : config->odd_area_border_color
-            );
-            cairo_stroke(cairo);
-        }
-    }
-}
-
 static void split_mode_render_cursor(
     struct state *state, void *mode_state, cairo_t *cairo
 ) {
@@ -98,6 +60,25 @@ static void split_mode_render_cursor(
 }
 
 static void
+render_split_target(cairo_t *cairo, int x, int y, char *label, uint32_t color) {
+    cairo_arc(cairo, x + .5, y + .5, 10, 0, 2 * M_PI);
+    cairo_set_source_u32(cairo, 0x44444455);
+    cairo_fill(cairo);
+
+    cairo_arc(cairo, x, y, 10, 0, 2 * M_PI);
+    cairo_set_source_u32(cairo, color);
+    cairo_set_line_width(cairo, 1);
+    cairo_stroke(cairo);
+
+    cairo_set_font_size(cairo, 15);
+    cairo_text_extents_t te;
+    cairo_text_extents(cairo, label, &te);
+    cairo_move_to(cairo, x - te.x_advance / 2., y + te.height / 2.);
+    cairo_set_source_u32(cairo, color);
+    cairo_show_text(cairo, label);
+}
+
+static void
 split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     struct mode_split_config *config = &state->config.mode_split;
     struct split_mode_state  *ms     = mode_state;
@@ -109,7 +90,7 @@ split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     cairo_set_source_u32(cairo, config->history_border_color);
     cairo_set_line_width(cairo, 1);
 
-    for (int i = 0; i < ms->current; i++) {
+    for (int i = 0; i <= ms->current; i++) {
         struct rect *area = &ms->areas[i];
         cairo_rectangle(
             cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
@@ -117,7 +98,61 @@ split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
         cairo_stroke(cairo);
     }
 
-    split_mode_render_grid(state, mode_state, cairo);
+    struct rect *area = &ms->areas[ms->current];
+
+    /*
+
+   x  x+w/4    x+w
+   +--+-----+--+ y
+   |  .     .  |
+   +.....0.....+ y+h/4 (2)
+   |  .     .  |
+   |..2..*..3..|
+   |  .     .  |
+   +.....1.....+ y+3h/4 (3)
+   |  .     .  |
+   +--+-----+--+ y+h
+ (0)    x+3w/4
+
+     */
+
+    cairo_set_source_u32(cairo, 0x11111188);
+    cairo_rectangle(
+        cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
+    );
+    cairo_fill(cairo);
+
+    uint32_t vertical_color  = 0x8888ffcc;
+    uint32_t horizonal_color = 0x008800CC;
+
+    cairo_set_source_u32(cairo, vertical_color);
+    cairo_set_line_width(cairo, 1);
+    cairo_move_to(cairo, area->x + area->w / 2. + .5, area->y);
+    cairo_line_to(cairo, area->x + area->w / 2. + .5, area->y + area->h);
+    cairo_stroke(cairo);
+
+    cairo_set_source_u32(cairo, horizonal_color);
+    cairo_set_line_width(cairo, 1);
+    cairo_move_to(cairo, area->x, area->y + area->h / 2. + .5);
+    cairo_line_to(cairo, area->x + area->w, area->y + area->h / 2. + .5);
+    cairo_stroke(cairo);
+
+    render_split_target(
+        cairo, area->x + area->w / 4, area->y + area->h / 2, "←", vertical_color
+    );
+    render_split_target(
+        cairo, area->x + area->w * 3 / 4, area->y + area->h / 2, "→",
+        vertical_color
+    );
+    render_split_target(
+        cairo, area->x + area->w / 2, area->y + area->h / 4, "↑",
+        horizonal_color
+    );
+    render_split_target(
+        cairo, area->x + area->w / 2, area->y + area->h * 3 / 4, "↓",
+        horizonal_color
+    );
+
     split_mode_render_cursor(state, mode_state, cairo);
 }
 
