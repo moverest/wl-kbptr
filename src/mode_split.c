@@ -195,6 +195,24 @@ static bool split_mode_key(
         return split_mode_split(state, mode_state, SPLIT_DIR_DOWN);
     }
 
+    switch (text[0]) {
+    case 'a':
+    case 'h':
+        return split_mode_split(state, mode_state, SPLIT_DIR_LEFT);
+
+    case 'd':
+    case 'l':
+        return split_mode_split(state, mode_state, SPLIT_DIR_RIGHT);
+
+    case 'w':
+    case 'k':
+        return split_mode_split(state, mode_state, SPLIT_DIR_UP);
+
+    case 's':
+    case 'j':
+        return split_mode_split(state, mode_state, SPLIT_DIR_DOWN);
+    }
+
     return false;
 }
 
