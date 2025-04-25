@@ -51,6 +51,7 @@ Here are the compositors with which it has been tested:
 | [Sway](https://swaywm.org) | ✅ | - |
 | [Hyprland](https://hyprland.org) | ✅ | - |
 | [Niri](https://github.com/YaLTeR/niri) | ✅ | - |
+| [dwl](https://codeberg.org/dwl/dwl) | ✅ | - |
 | [KWin](https://github.com/KDE/kwin) | ❗ | The compositor doesn't support the [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocols. It can still work with the `--print-only` option and the mouse pointer can then be moved with `ydotool` or similar. |
 | [Mutter](https://mutter.gnome.org) | ❌ | The compositor doesn't support any of the required protocols. |
 
