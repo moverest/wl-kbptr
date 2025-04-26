@@ -84,6 +84,17 @@ static void split_mode_render_cursor(
         cairo, pointer_x + (int)(config->pointer_size / 2) + .5, pointer_y + .5
     );
     cairo_stroke(cairo);
+
+    // Draw "undividable" marker, draw a red circle around the cursor
+    if (area->w <= 1 && area->h <= 1) {
+        cairo_set_source_u32(cairo, config->pointer_color);
+        cairo_arc(
+            cairo, area->x + .5, area->y + .5, config->pointer_size / 4., 0,
+            2 * M_PI
+        );
+        cairo_set_line_width(cairo, 1);
+        cairo_stroke(cairo);
+    }
 }
 
 static void
