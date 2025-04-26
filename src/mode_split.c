@@ -206,6 +206,28 @@ static bool split_mode_key(
         return split_mode_split(state, mode_state, SPLIT_DIR_DOWN);
     }
 
+    int matched_i = find_str(state->home_row, HOME_ROW_LEN_WITH_BTN, text);
+    switch (matched_i) {
+    case HOME_ROW_LEFT_CLICK:
+        state->click = CLICK_LEFT_BTN;
+        enter_next_mode(state, ms->areas[ms->current]);
+        return false;
+
+    case HOME_ROW_RIGHT_CLICK:
+        state->click = CLICK_RIGHT_BTN;
+        enter_next_mode(state, ms->areas[ms->current]);
+        return false;
+
+    case HOME_ROW_MIDDLE_CLICK:
+        state->click = CLICK_MIDDLE_BTN;
+        enter_next_mode(state, ms->areas[ms->current]);
+        return false;
+
+    default:
+        break;
+    }
+
+    // Handle `wasd` and `hjkl` but only after home_row_keys
     switch (text[0]) {
     case 'a':
     case 'h':
