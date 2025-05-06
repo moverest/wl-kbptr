@@ -312,7 +312,7 @@ static struct section_def section_defs[] = {
 
 void print_default_config() {
     puts("# wl-kbptr can be configured with a configuration file.");
-    puts("# The file location can be passed with the -C parameter.");
+    puts("# The file location can be passed with the -c parameter.");
     puts("# Othewise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will");
     puts("# be loaded if it exits. Below is the default configuration.");
 
@@ -484,6 +484,18 @@ static FILE *open_config_file(char *file_name) {
     }
 
     char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+
+    if (xdg_config_home == NULL) {
+        const char *home = getenv("HOME");
+        if (home != NULL) {
+            size_t len = strlen(home) + strlen("/.config") + 1;
+            xdg_config_home = malloc(len);
+            if (xdg_config_home) {
+                snprintf(xdg_config_home, len, "%s/.config", home);
+            }
+        }
+    }
+
     if (xdg_config_home != NULL) {
         int  path_len = snprintf(NULL, 0, XDG_PATH_FMT, xdg_config_home) + 1;
         char file_path[path_len];
