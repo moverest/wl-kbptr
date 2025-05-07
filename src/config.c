@@ -483,17 +483,19 @@ static FILE *open_config_file(char *file_name) {
         return f;
     }
 
-    char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+    char       *xdg_config_home     = getenv("XDG_CONFIG_HOME");
+    const char *home                = getenv("HOME");
+    size_t      config_home_buf_len = 0;
 
-    if (xdg_config_home == NULL) {
-        const char *home = getenv("HOME");
-        if (home != NULL) {
-            size_t len = strlen(home) + strlen("/.config") + 1;
-            xdg_config_home = malloc(len);
-            if (xdg_config_home) {
-                snprintf(xdg_config_home, len, "%s/.config", home);
-            }
-        }
+    if (xdg_config_home == NULL && home != NULL) {
+        config_home_buf_len = strlen(home) + sizeof("/.config");
+    }
+
+    char config_home_buf[config_home_buf_len];
+
+    if (xdg_config_home == NULL && home != NULL) {
+        snprintf(config_home_buf, config_home_buf_len, "%s/.config", home);
+        xdg_config_home = config_home_buf;
     }
 
     if (xdg_config_home != NULL) {
