@@ -62,6 +62,8 @@ static void split_mode_render_cursor(
 static void render_split_render_arrow(
     cairo_t *cairo, int x, int y, enum split_dir dir, uint32_t color
 ) {
+#define SIMPLE_ARROWS
+#if !defined(SIMPLE_ARROWS)
     char *label;
     switch (dir) {
     case SPLIT_DIR_LEFT:
@@ -96,6 +98,50 @@ static void render_split_render_arrow(
     cairo_move_to(cairo, x - te.x_advance / 2., y + te.height / 2.);
     cairo_set_source_u32(cairo, color);
     cairo_show_text(cairo, label);
+
+#else
+    double dx1, dy1, dx2, dy2;
+
+    cairo_set_source_u32(cairo, color);
+    switch (dir) {
+    case SPLIT_DIR_LEFT:
+        dx1 = 1.;
+        dx2 = 1.;
+        dy1 = 1.;
+        dy2 = -1.;
+        break;
+
+    case SPLIT_DIR_RIGHT:
+        dx1 = -1.;
+        dx2 = -1.;
+        dy1 = 1.;
+        dy2 = -1.;
+        break;
+
+    case SPLIT_DIR_UP:
+        dx1 = -1.;
+        dx2 = 1.;
+        dy1 = 1.;
+        dy2 = 1.;
+        break;
+
+    case SPLIT_DIR_DOWN:
+        dx1 = -1.;
+        dx2 = 1.;
+        dy1 = -1.;
+        dy2 = -1.;
+        break;
+    }
+
+    cairo_set_line_width(cairo, 2);
+    cairo_move_to(cairo, x, y);
+    cairo_line_to(cairo, x + 5 * dx1, y + 5 * dy1);
+    cairo_stroke(cairo);
+
+    cairo_move_to(cairo, x, y);
+    cairo_line_to(cairo, x + 5 * dx2, y + 5 * dy2);
+    cairo_stroke(cairo);
+#endif
 }
 
 static void split_mode_render_markers(
