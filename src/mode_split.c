@@ -6,12 +6,14 @@
 
 #include <stdlib.h>
 
+#define ARROW_SIZE 5
+
 // Split direction -- defines the "shrink" direction of the rectangle
 enum split_dir {
-    SPLIT_DIR_DOWN,
-    SPLIT_DIR_UP,
-    SPLIT_DIR_LEFT,
-    SPLIT_DIR_RIGHT,
+    SPLIT_DIR_DOWN  = 0,
+    SPLIT_DIR_UP    = 1,
+    SPLIT_DIR_LEFT  = 2,
+    SPLIT_DIR_RIGHT = 3,
 };
 
 void *split_mode_enter(struct state *state, struct rect area) {
@@ -100,46 +102,59 @@ static void render_split_render_arrow(
     cairo_show_text(cairo, label);
 
 #else
-    double dx1, dy1, dx2, dy2;
+    static const struct {
+        char dx1 : 2;
+        char dy1 : 2;
+        char dx2 : 2;
+        char dy2 : 2;
+    } arrow_points[] = {
+        [SPLIT_DIR_LEFT] =
+            {
+                .dx1 = 1,
+                .dy1 = 1,
+                .dx2 = 1,
+                .dy2 = -1,
+            },
+        [SPLIT_DIR_RIGHT] =
+            {
+                .dx1 = -1,
+                .dy1 = 1,
+                .dx2 = -1,
+                .dy2 = -1,
+            },
+        [SPLIT_DIR_UP] =
+            {
+                .dx1 = -1,
+                .dy1 = 1,
+                .dx2 = 1,
+                .dy2 = 1,
+            },
 
-    cairo_set_source_u32(cairo, color);
-    switch (dir) {
-    case SPLIT_DIR_LEFT:
-        dx1 = 1.;
-        dx2 = 1.;
-        dy1 = 1.;
-        dy2 = -1.;
-        break;
+        [SPLIT_DIR_DOWN] =
+            {
+                .dx1 = -1,
+                .dy1 = -1,
+                .dx2 = 1,
+                .dy2 = -1,
+            },
+    };
 
-    case SPLIT_DIR_RIGHT:
-        dx1 = -1.;
-        dx2 = -1.;
-        dy1 = 1.;
-        dy2 = -1.;
-        break;
-
-    case SPLIT_DIR_UP:
-        dx1 = -1.;
-        dx2 = 1.;
-        dy1 = 1.;
-        dy2 = 1.;
-        break;
-
-    case SPLIT_DIR_DOWN:
-        dx1 = -1.;
-        dx2 = 1.;
-        dy1 = -1.;
-        dy2 = -1.;
-        break;
+    if (dir < 0 || dir >= 4) {
+        return;
     }
 
+    cairo_set_source_u32(cairo, color);
+    cairo_set_line_join(cairo, CAIRO_LINE_JOIN_ROUND);
     cairo_set_line_width(cairo, 2);
-    cairo_move_to(cairo, x, y);
-    cairo_line_to(cairo, x + 5 * dx1, y + 5 * dy1);
-    cairo_stroke(cairo);
-
-    cairo_move_to(cairo, x, y);
-    cairo_line_to(cairo, x + 5 * dx2, y + 5 * dy2);
+    cairo_move_to(
+        cairo, x + ARROW_SIZE * arrow_points[dir].dx1 + .5,
+        y + ARROW_SIZE * arrow_points[dir].dy1 + .5
+    );
+    cairo_line_to(cairo, x + .5, y + .5);
+    cairo_line_to(
+        cairo, x + ARROW_SIZE * arrow_points[dir].dx2 + .5,
+        y + ARROW_SIZE * arrow_points[dir].dy2 + .5
+    );
     cairo_stroke(cairo);
 #endif
 }
@@ -147,16 +162,19 @@ static void render_split_render_arrow(
 static void split_mode_render_markers(
     cairo_t *cairo, struct rect *area, uint32_t vcolor, uint32_t hcolor
 ) {
+    uint32_t middle_x = area->x + area->w / 2;
+    uint32_t middle_y = area->y + area->h / 2;
+
     cairo_set_source_u32(cairo, hcolor);
     cairo_set_line_width(cairo, 1);
-    cairo_move_to(cairo, area->x + area->w / 2., area->y);
-    cairo_line_to(cairo, area->x + area->w / 2., area->y + area->h);
+    cairo_move_to(cairo, middle_x + .5, area->y + .5);
+    cairo_line_to(cairo, middle_x + .5, area->y + area->h + .5);
     cairo_stroke(cairo);
 
     cairo_set_source_u32(cairo, vcolor);
     cairo_set_line_width(cairo, 1);
-    cairo_move_to(cairo, area->x, area->y + area->h / 2.);
-    cairo_line_to(cairo, area->x + area->w, area->y + area->h / 2.);
+    cairo_move_to(cairo, area->x + .5, middle_y + .5);
+    cairo_line_to(cairo, area->x + area->w + .5, middle_y + .5);
     cairo_stroke(cairo);
 
     /*
@@ -174,22 +192,27 @@ static void split_mode_render_markers(
  (0)    x+3w/4
 
      */
-    render_split_render_arrow(
-        cairo, area->x + area->w / 4, area->y + area->h / 2, SPLIT_DIR_LEFT,
-        hcolor
-    );
-    render_split_render_arrow(
-        cairo, area->x + area->w * 3 / 4, area->y + area->h / 2,
-        SPLIT_DIR_RIGHT, hcolor
-    );
-    render_split_render_arrow(
-        cairo, area->x + area->w / 2, area->y + area->h / 4, SPLIT_DIR_UP,
-        vcolor
-    );
-    render_split_render_arrow(
-        cairo, area->x + area->w / 2, area->y + area->h * 3 / 4, SPLIT_DIR_DOWN,
-        vcolor
-    );
+
+    if (area->w > 1) {
+        render_split_render_arrow(
+            cairo, area->x + area->w / 4, area->y + area->h / 2, SPLIT_DIR_LEFT,
+            hcolor
+        );
+        render_split_render_arrow(
+            cairo, area->x + area->w * 3 / 4, area->y + area->h / 2,
+            SPLIT_DIR_RIGHT, hcolor
+        );
+    }
+    if (area->h > 1) {
+        render_split_render_arrow(
+            cairo, area->x + area->w / 2, area->y + area->h / 4, SPLIT_DIR_UP,
+            vcolor
+        );
+        render_split_render_arrow(
+            cairo, area->x + area->w / 2, area->y + area->h * 3 / 4,
+            SPLIT_DIR_DOWN, vcolor
+        );
+    }
 }
 
 static void
