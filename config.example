@@ -1,5 +1,5 @@
 # wl-kbptr can be configured with a configuration file.
-# The file location can be passed with the -C parameter.
+# The file location can be passed with the -c parameter.
 # Othewise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will
 # be loaded if it exits. Below is the default configuration.
 
