@@ -24,6 +24,7 @@ unselectable_bg_color=#2226
 selectable_bg_color=#1718
 selectable_border_color=#040c
 label_font_family=sans-serif
+label_min_font_size=12
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
 [mode_bisect]
