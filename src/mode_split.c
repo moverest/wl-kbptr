@@ -59,14 +59,34 @@ static void split_mode_render_cursor(
     }
 }
 
-static void
-render_split_target(cairo_t *cairo, int x, int y, char *label, uint32_t color) {
+static void render_split_render_arrow(
+    cairo_t *cairo, int x, int y, enum split_dir dir, uint32_t color
+) {
+    char *label;
+    switch (dir) {
+    case SPLIT_DIR_LEFT:
+        label = "←";
+        break;
+
+    case SPLIT_DIR_RIGHT:
+        label = "→";
+        break;
+
+    case SPLIT_DIR_UP:
+        label = "↑";
+        break;
+
+    case SPLIT_DIR_DOWN:
+        label = "↓";
+        break;
+    }
+
     cairo_arc(cairo, x + .5, y + .5, 10, 0, 2 * M_PI);
     cairo_set_source_u32(cairo, 0x44444455);
     cairo_fill(cairo);
 
-    cairo_arc(cairo, x, y, 10, 0, 2 * M_PI);
     cairo_set_source_u32(cairo, color);
+    cairo_arc(cairo, x, y, 10, 0, 2 * M_PI);
     cairo_set_line_width(cairo, 1);
     cairo_stroke(cairo);
 
@@ -78,27 +98,20 @@ render_split_target(cairo_t *cairo, int x, int y, char *label, uint32_t color) {
     cairo_show_text(cairo, label);
 }
 
-static void
-split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
-    struct mode_split_config *config = &state->config.mode_split;
-    struct split_mode_state  *ms     = mode_state;
-
-    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_u32(cairo, config->unselectable_bg_color);
-    cairo_paint(cairo);
-
-    cairo_set_source_u32(cairo, config->history_border_color);
+static void split_mode_render_markers(
+    cairo_t *cairo, struct rect *area, uint32_t vcolor, uint32_t hcolor
+) {
+    cairo_set_source_u32(cairo, hcolor);
     cairo_set_line_width(cairo, 1);
+    cairo_move_to(cairo, area->x + area->w / 2., area->y);
+    cairo_line_to(cairo, area->x + area->w / 2., area->y + area->h);
+    cairo_stroke(cairo);
 
-    for (int i = 0; i <= ms->current; i++) {
-        struct rect *area = &ms->areas[i];
-        cairo_rectangle(
-            cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
-        );
-        cairo_stroke(cairo);
-    }
-
-    struct rect *area = &ms->areas[ms->current];
+    cairo_set_source_u32(cairo, vcolor);
+    cairo_set_line_width(cairo, 1);
+    cairo_move_to(cairo, area->x, area->y + area->h / 2.);
+    cairo_line_to(cairo, area->x + area->w, area->y + area->h / 2.);
+    cairo_stroke(cairo);
 
     /*
 
@@ -115,44 +128,53 @@ split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
  (0)    x+3w/4
 
      */
+    render_split_render_arrow(
+        cairo, area->x + area->w / 4, area->y + area->h / 2, SPLIT_DIR_LEFT,
+        hcolor
+    );
+    render_split_render_arrow(
+        cairo, area->x + area->w * 3 / 4, area->y + area->h / 2,
+        SPLIT_DIR_RIGHT, hcolor
+    );
+    render_split_render_arrow(
+        cairo, area->x + area->w / 2, area->y + area->h / 4, SPLIT_DIR_UP,
+        vcolor
+    );
+    render_split_render_arrow(
+        cairo, area->x + area->w / 2, area->y + area->h * 3 / 4, SPLIT_DIR_DOWN,
+        vcolor
+    );
+}
 
+static void
+split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
+    struct mode_split_config *config = &state->config.mode_split;
+    struct split_mode_state  *ms     = mode_state;
+
+    cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_u32(cairo, config->bg_color);
+    cairo_paint(cairo);
+
+    cairo_set_source_u32(cairo, config->history_border_color);
+    cairo_set_line_width(cairo, 1);
+
+    for (int i = 0; i <= ms->current; i++) {
+        struct rect *area = &ms->areas[i];
+        cairo_rectangle(
+            cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
+        );
+        cairo_stroke(cairo);
+    }
+
+    struct rect *area = &ms->areas[ms->current];
     cairo_set_source_u32(cairo, 0x11111188);
     cairo_rectangle(
         cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
     );
     cairo_fill(cairo);
-
-    uint32_t vertical_color  = 0x8888ffcc;
-    uint32_t horizonal_color = 0x008800CC;
-
-    cairo_set_source_u32(cairo, vertical_color);
-    cairo_set_line_width(cairo, 1);
-    cairo_move_to(cairo, area->x + area->w / 2. + .5, area->y);
-    cairo_line_to(cairo, area->x + area->w / 2. + .5, area->y + area->h);
-    cairo_stroke(cairo);
-
-    cairo_set_source_u32(cairo, horizonal_color);
-    cairo_set_line_width(cairo, 1);
-    cairo_move_to(cairo, area->x, area->y + area->h / 2. + .5);
-    cairo_line_to(cairo, area->x + area->w, area->y + area->h / 2. + .5);
-    cairo_stroke(cairo);
-
-    render_split_target(
-        cairo, area->x + area->w / 4, area->y + area->h / 2, "←", vertical_color
+    split_mode_render_markers(
+        cairo, area, config->vertical_color, config->horizontal_color
     );
-    render_split_target(
-        cairo, area->x + area->w * 3 / 4, area->y + area->h / 2, "→",
-        vertical_color
-    );
-    render_split_target(
-        cairo, area->x + area->w / 2, area->y + area->h / 4, "↑",
-        horizonal_color
-    );
-    render_split_target(
-        cairo, area->x + area->w / 2, area->y + area->h * 3 / 4, "↓",
-        horizonal_color
-    );
-
     split_mode_render_cursor(state, mode_state, cairo);
 }
 

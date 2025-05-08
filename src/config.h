@@ -58,11 +58,9 @@ struct mode_split_config {
     double  pointer_size;
     int32_t pointer_color;
 
-    uint32_t unselectable_bg_color;
-    uint32_t even_area_bg_color;
-    uint32_t even_area_border_color;
-    uint32_t odd_area_bg_color;
-    uint32_t odd_area_border_color;
+    uint32_t bg_color;
+    uint32_t vertical_color;
+    uint32_t horizontal_color;
 
     uint32_t history_border_color;
 };
