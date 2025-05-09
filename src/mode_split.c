@@ -236,7 +236,7 @@ split_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     }
 
     struct rect *area = &ms->areas[ms->current];
-    cairo_set_source_u32(cairo, 0x11111188);
+    cairo_set_source_u32(cairo, config->area_bg_color);
     cairo_rectangle(
         cairo, area->x + .5, area->y + .5, area->w - 1, area->h - 1
     );

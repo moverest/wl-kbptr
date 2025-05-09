@@ -312,6 +312,7 @@ static struct section_def section_defs[] = {
         mode_split, MS_FIELD(pointer_size, "20", parse_double, noop),
         MS_FIELD(pointer_color, "#e22d", parse_color, noop),
         MS_FIELD(bg_color, "#2226", parse_color, noop),
+        MS_FIELD(area_bg_color, "#11111188", parse_color, noop),
         MS_FIELD(vertical_color, "#8888ffcc", parse_color, noop),
         MS_FIELD(horizontal_color, "#008800cc", parse_color, noop),
         MS_FIELD(history_border_color, "#3339", parse_color, noop)

@@ -59,6 +59,7 @@ struct mode_split_config {
     int32_t pointer_color;
 
     uint32_t bg_color;
+    uint32_t area_bg_color;
     uint32_t vertical_color;
     uint32_t horizontal_color;
 
