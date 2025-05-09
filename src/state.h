@@ -30,7 +30,8 @@
 // pixels.
 #define BISECT_MAX_HISTORY 16
 
-// Split history of up to a resolution of 65536x65536
+// Split history of up to a resolution of 65536x65536 assuming equal number of
+// divisions each way.
 #define SPLIT_MAX_HISTORY 32
 
 #define MAX_NUM_MODES   3
