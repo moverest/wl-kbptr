@@ -10,6 +10,7 @@ To enable to select a target and click, it has four different modes:
 - [`floating`](#floating-mode) &mdash; which uses arbitrary areas either given by the user or detected,
 - [`tile`](#tile-mode) &mdash; which uses a grid to select areas,
 - [`bisect`](#bisect-mode) &mdash; which enables to bisect an area,
+- [`split`](#split-mode) &mdash; which enables to successively split an area,
 - and [`click`](#click-mode) &mdash; which triggers a click in the middle of an area.
 
 These are set with the `modes` configuration field and can be chained, e.g. `wl-kbptr -o modes=tile,bisect`.
@@ -30,8 +31,15 @@ The `tile` mode displays a grid. To select an area, simply type the label associ
 ### Bisect mode
 ![Demo](https://github.com/user-attachments/assets/ea1305e9-d798-4aa6-9bc1-6227dcbcff54)
 
-The `bisect` mode enables to bisect a given area. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`. A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively on a QWERTY keyboard layout. Note that other layout will use the same keys positions, e.g. `i`, `d`, and `x` with a Dvorak keyboard layout.
+The `bisect` mode enables to bisect a given area. At any point the cursor can be moved at the location marked by the red marker by pressing `Enter` or `Space`.
 
+A left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively on a QWERTY keyboard layout. Note that other layout will use the same keys positions, e.g. `i`, `d`, and `x` with a Dvorak keyboard layout.
+
+### Split mode
+
+The `split` mode enables to successively split an area with the arrow keys.
+
+Just like the `bisect` mode, a left, right and middle click can be made by pressing the `g`, `h` and `b` keys respectively on a QWERTY keyboard layout.
 
 ### Click mode
 
