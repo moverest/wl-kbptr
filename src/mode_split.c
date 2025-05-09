@@ -64,44 +64,6 @@ static void split_mode_render_cursor(
 static void render_split_render_arrow(
     cairo_t *cairo, int x, int y, enum split_dir dir, uint32_t color
 ) {
-#define SIMPLE_ARROWS
-#if !defined(SIMPLE_ARROWS)
-    char *label;
-    switch (dir) {
-    case SPLIT_DIR_LEFT:
-        label = "←";
-        break;
-
-    case SPLIT_DIR_RIGHT:
-        label = "→";
-        break;
-
-    case SPLIT_DIR_UP:
-        label = "↑";
-        break;
-
-    case SPLIT_DIR_DOWN:
-        label = "↓";
-        break;
-    }
-
-    cairo_arc(cairo, x + .5, y + .5, 10, 0, 2 * M_PI);
-    cairo_set_source_u32(cairo, 0x44444455);
-    cairo_fill(cairo);
-
-    cairo_set_source_u32(cairo, color);
-    cairo_arc(cairo, x, y, 10, 0, 2 * M_PI);
-    cairo_set_line_width(cairo, 1);
-    cairo_stroke(cairo);
-
-    cairo_set_font_size(cairo, 15);
-    cairo_text_extents_t te;
-    cairo_text_extents(cairo, label, &te);
-    cairo_move_to(cairo, x - te.x_advance / 2., y + te.height / 2.);
-    cairo_set_source_u32(cairo, color);
-    cairo_show_text(cairo, label);
-
-#else
     static const struct {
         char dx1 : 2;
         char dy1 : 2;
@@ -156,7 +118,6 @@ static void render_split_render_arrow(
         y + ARROW_SIZE * arrow_points[dir].dy2 + .5
     );
     cairo_stroke(cairo);
-#endif
 }
 
 static void split_mode_render_markers(
