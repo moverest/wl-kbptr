@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=1.0
+Name=wl-kbptr
+Comment=Control the mouse pointer with the keyboard
+Exec=wl-kbptr
+Terminal=false
+Type=Application

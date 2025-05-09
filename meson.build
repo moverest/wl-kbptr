@@ -76,3 +76,9 @@ label_test_exec = executable(
 )
 
 test('test_label', label_test_exec)
+
+install_data(
+  'share/wl-kbptr.desktop',
+  rename: 'wl-kbptr.desktop',
+  install_dir: 'share/applications',
+)
