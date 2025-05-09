@@ -33,6 +33,7 @@ struct mode_floating_config {
     uint32_t                  selectable_bg_color;
     uint32_t                  selectable_border_color;
     char                     *label_font_family;
+    double                    label_min_font_size;
     char                     *label_symbols;
 };
 
