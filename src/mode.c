@@ -12,12 +12,8 @@ extern struct mode_interface split_mode_interface;
 extern struct mode_interface click_mode_interface;
 
 struct mode_interface *mode_interfaces[] = {
-    &tile_mode_interface,
-    &floating_mode_interface,
-    &bisect_mode_interface,
-    &split_mode_interface,
-    &click_mode_interface,
-    NULL,
+    &tile_mode_interface,  &floating_mode_interface, &bisect_mode_interface,
+    &split_mode_interface, &click_mode_interface,    NULL,
 };
 
 static struct mode_interface *find_mode_interface_by_name(char *name) {
