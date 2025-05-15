@@ -917,11 +917,14 @@ int main(int argc, char **argv) {
     surface_buffer_pool_destroy(&state.surface_buffer_pool);
     wl_display_roundtrip(state.wl_display);
 
+    int status_code = 0;
     if (state.result.x != -1) {
         print_result(&state);
         if (!only_print) {
             move_pointer(&state);
         }
+    } else {
+        status_code = state.config.general.cancellation_status_code;
     }
 
     free_seats(&state.seats);
@@ -949,5 +952,5 @@ int main(int argc, char **argv) {
     config_free_values(&state.config);
     free_mode_states(&state);
 
-    return 0;
+    return status_code;
 }

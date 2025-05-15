@@ -6,6 +6,7 @@
 [general]
 home_row_keys=
 modes=tile,bisect
+cancellation_status_code=0
 
 [mode_tile]
 label_color=#fffd

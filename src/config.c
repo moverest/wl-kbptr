@@ -85,6 +85,17 @@ static int parse_double(void *dest, char *value) {
     return 0;
 }
 
+static int parse_uint8(void *dest, char *value) {
+    int decoded = atoi(value);
+    if (decoded < 0 || decoded >= 256) {
+        LOG_ERR("Value should be between 0 and 255 (included).");
+        return 1;
+    }
+
+    *((uint8_t *)dest) = (uint8_t)decoded;
+    return 0;
+}
+
 static int parse_home_row_keys(void *dest, char *value) {
     char ***home_row_keys_ptr = dest;
 
@@ -267,7 +278,8 @@ static struct section_def section_defs[] = {
     SECTION(
         general,
         G_FIELD(home_row_keys, "", parse_home_row_keys, free_home_row_keys),
-        G_FIELD(modes, "tile,bisect", parse_str, free_str)
+        G_FIELD(modes, "tile,bisect", parse_str, free_str),
+        G_FIELD(cancellation_status_code, "0", parse_uint8, noop)
     ),
     SECTION(
         mode_tile, MT_FIELD(label_color, "#fffd", parse_color, noop),

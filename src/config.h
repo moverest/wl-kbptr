@@ -6,8 +6,9 @@
 #include <stdint.h>
 
 struct general_config {
-    char **home_row_keys;
-    char  *modes;
+    char  **home_row_keys;
+    char   *modes;
+    uint8_t cancellation_status_code;
 };
 
 struct mode_tile_config {
