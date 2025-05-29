@@ -571,6 +571,62 @@ const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
     .preferred_scale = fractional_scale_preferred,
 };
 
+static void apply_transform(
+    uint32_t *x, uint32_t *y, uint32_t *width, uint32_t *height,
+    enum wl_output_transform transform
+) {
+    uint32_t temp;
+
+    switch (transform) {
+    case WL_OUTPUT_TRANSFORM_NORMAL:
+        break;
+
+    case WL_OUTPUT_TRANSFORM_90:
+        temp = *x;
+        *x   = *y;
+        *y   = *width - temp;
+
+        temp    = *width;
+        *width  = *height;
+        *height = temp;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_180:
+        *x = *width - *x;
+        *y = *height - *y;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_270:
+        temp = *x;
+        *x   = *height - *y;
+        *y   = temp;
+
+        temp    = *width;
+        *width  = *height;
+        *height = temp;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
+        *x = *width - *x;
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+        *x = *width - *x;
+        apply_transform(x, y, width, height, WL_OUTPUT_TRANSFORM_90);
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        *x = *width - *x;
+        apply_transform(x, y, width, height, WL_OUTPUT_TRANSFORM_180);
+        break;
+
+    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+        *x = *width - *x;
+        apply_transform(x, y, width, height, WL_OUTPUT_TRANSFORM_270);
+        break;
+    }
+}
+
 static void move_pointer(struct state *state) {
     wl_display_roundtrip(state->wl_display);
 
@@ -581,12 +637,17 @@ static void move_pointer(struct state *state) {
             state->current_output->wl_output
         );
 
-    int x = state->result.x + state->result.w / 2;
-    int y = state->result.y + state->result.h / 2;
+    uint32_t x             = state->result.x + state->result.w / 2;
+    uint32_t y             = state->result.y + state->result.h / 2;
+    uint32_t output_width  = state->current_output->width;
+    uint32_t output_height = state->current_output->height;
+
+    apply_transform(
+        &x, &y, &output_width, &output_height, state->current_output->transform
+    );
 
     zwlr_virtual_pointer_v1_motion_absolute(
-        virt_pointer, 0, x, y, state->current_output->width,
-        state->current_output->height
+        virt_pointer, 0, x, y, output_width, output_height
     );
     zwlr_virtual_pointer_v1_frame(virt_pointer);
     wl_display_roundtrip(state->wl_display);
