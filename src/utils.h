@@ -26,8 +26,4 @@ int find_str(char **strs, size_t len, char *to_find);
 // Return its encoded length in bytes or < 0 if invalid.
 int str_to_rune(char *s, uint32_t *rune);
 
-// Return index (in number of rune, not byte position) of given character.
-// If not found, return < 0.
-int str_index(char *s, uint32_t rune);
-
 #endif

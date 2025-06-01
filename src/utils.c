@@ -51,27 +51,6 @@ int str_to_rune(char *str, uint32_t *rune) {
     return size;
 }
 
-int str_index(char *s, uint32_t rune) {
-    char *p = s;
-    for (int i = 0;; i++) {
-        if (*p == 0) {
-            return -1;
-        }
-
-        uint32_t c;
-        int      size = str_to_rune(p, &c);
-        if (size <= 0) {
-            return -1;
-        }
-
-        if (c == rune) {
-            return i;
-        }
-
-        c += size;
-    }
-}
-
 int find_str(char **strs, size_t len, char *to_find) {
     int matched_i = -1;
     for (int i = 0; i < len; i++) {
