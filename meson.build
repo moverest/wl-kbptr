@@ -33,7 +33,6 @@ dependencies = [
   xkbcommon,
   cairo,
   math,
-  wayland_client,
 ]
 
 sources = [
