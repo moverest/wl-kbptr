@@ -59,7 +59,7 @@ enum bisect_division {
 };
 
 void *bisect_mode_enter(struct state *state, struct rect area) {
-    struct bisect_mode_state *ms = malloc(sizeof(struct bisect_mode_state));
+    struct bisect_mode_state *ms = malloc(sizeof(*ms));
     ms->areas[0]                 = area;
     ms->current                  = 0;
 

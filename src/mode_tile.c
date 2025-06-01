@@ -14,7 +14,7 @@
 #define MIN_SUB_AREA_SIZE (25 * 50)
 
 void *tile_mode_enter(struct state *state, struct rect area) {
-    struct tile_mode_state *ms = malloc(sizeof(struct tile_mode_state));
+    struct tile_mode_state *ms = malloc(sizeof(*ms));
     ms->area                   = area;
 
     const int max_num_sub_areas = 26 * 26;

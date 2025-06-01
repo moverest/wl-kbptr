@@ -87,8 +87,7 @@ int label_symbols_find_idx(label_symbols_t *label_symbols, char *s) {
 
 label_selection_t *
 label_selection_new(label_symbols_t *label_symbols, int num_labels) {
-    label_selection_t *l =
-        malloc(sizeof(label_selection_t) + label_symbols->num_symbols);
+    label_selection_t *l = malloc(sizeof(*l) + label_symbols->num_symbols);
 
     l->num_labels = num_labels;
 

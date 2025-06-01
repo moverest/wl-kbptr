@@ -55,7 +55,7 @@ static struct scrcpy_buffer *create_scrcpy_buffer(
 
     close(fd);
 
-    struct scrcpy_buffer *buffer = malloc(sizeof(struct scrcpy_buffer));
+    struct scrcpy_buffer *buffer = malloc(sizeof(*buffer));
 
     buffer->wl_buffer = wl_buffer;
     buffer->format    = format;

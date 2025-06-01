@@ -17,7 +17,7 @@ enum split_dir {
 };
 
 void *split_mode_enter(struct state *state, struct rect area) {
-    struct split_mode_state *ms = malloc(sizeof(struct split_mode_state));
+    struct split_mode_state *ms = malloc(sizeof(*ms));
     ms->areas[0]                = area;
     ms->current                 = 0;
     return ms;
