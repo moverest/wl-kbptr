@@ -51,7 +51,7 @@ The `click` mode simply triggers a click in the middle of the selection area.
 ## Supported compositors
 
 For `wl-kbptr` to work, it requires the following protocols:
- - [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) for the program to be displays on top,
+ - [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) for the program to display on top,
  - [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) to control the mouse pointer,
  - and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) (optional) to capture the screen for target detection in the `floating` mode.
 
@@ -75,7 +75,7 @@ If you are using Arch Linux, you can install the [`wl-kbptr` AUR package](https:
 You can build and install the package with:
 
 ```bash
-curl 'https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=wl-kbptr' -O PKGBUILD
+curl 'https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=wl-kbptr' -o PKGBUILD
 makepkg -si
 ```
 
@@ -116,7 +116,7 @@ meson build
 meson compile -C build
 ```
 
-If you want to build the target detection feature (see [floating mode](floating-mode)), you need to enable the `opencv` feature:
+If you want to build the target detection feature (see [floating mode](#floating-mode)), you need to enable the `opencv` feature:
 
 ```bash
 meson build -Dopencv=enabled
@@ -194,13 +194,13 @@ binde=,t,exec,wlrctl pointer scroll 0 -10
 binde=,g,exec,wlrctl pointer scroll 0 10
 
 # Exit cursor submap
-# If you do not use cursor timeout or cursor:hide_on_key_press, you can delete its respective cals
+# If you do not use cursor timeout or cursor:hide_on_key_press, you can delete its respective calls.
 bind=,escape,exec,hyprctl keyword cursor:inactive_timeout 3; hyprctl keyword cursor:hide_on_key_press true; hyprctl dispatch submap reset 
 
 submap = reset
 
 # Entrypoint
-# If you do not use cursor timeout or cursor:hide_on_key_press, you can delete its respective cals
+# If you do not use cursor timeout or cursor:hide_on_key_press, you can delete its respective calls.
 bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword cursor:hide_on_key_press false; hyprctl dispatch submap cursor
 ```
 
