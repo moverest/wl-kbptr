@@ -15,6 +15,8 @@ To enable to select a target and click, it has four different modes:
 
 These are set with the `modes` configuration field and can be chained, e.g. `wl-kbptr -o modes=tile,bisect`.
 
+Note that if you make a mistake &mdash; e.g. select the wrong area &mdash; you can always go back on step by pressing the `Backspace` key. This even works between modes.
+
 ### Floating mode
 [Floating Mode Demo](https://github.com/user-attachments/assets/1598128b-e03b-4d06-b47a-bc8a0021f4da)
 
