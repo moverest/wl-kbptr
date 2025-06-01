@@ -94,7 +94,7 @@ static struct surface_buffer *surface_buffer_init(
 }
 
 static void surface_buffer_destroy(struct surface_buffer *buffer) {
-    if (buffer->state == SURFACE_BUFFER_UNITIALIZED) {
+    if (buffer->state == SURFACE_BUFFER_UNINITIALIZED) {
         return;
     }
 
@@ -147,7 +147,7 @@ struct surface_buffer *get_next_buffer(
         surface_buffer_destroy(buffer);
     }
 
-    if (buffer->state == SURFACE_BUFFER_UNITIALIZED) {
+    if (buffer->state == SURFACE_BUFFER_UNINITIALIZED) {
         if (surface_buffer_init(wl_shm, buffer, width, height) == NULL) {
             LOG_ERR("Could not initialize next buffer.");
             return NULL;

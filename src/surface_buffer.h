@@ -7,7 +7,7 @@
 enum surface_buffer_state {
     // This must be set to 0 as we set the whole structure to 0 when it's not
     // initialized.
-    SURFACE_BUFFER_UNITIALIZED = 0,
+    SURFACE_BUFFER_UNINITIALIZED = 0,
 
     SURFACE_BUFFER_READY = 1,
     SURFACE_BUFFER_BUSY  = 2,
