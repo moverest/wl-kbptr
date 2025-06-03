@@ -729,9 +729,7 @@ static void print_usage() {
     puts(" -r, --restrict=AREA restrict to given area (wxh+x+y)");
     puts(" -o, --option        set configuration option");
     puts(" -O, --output        specify display output to use");
-    puts(
-        " -p, --print-only    only print the requested mouse movement and click"
-    );
+    puts(" -p, --only-print    only print, don't move the cursor or click");
 }
 
 static void print_version() {
