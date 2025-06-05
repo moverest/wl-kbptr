@@ -96,6 +96,83 @@ static int parse_uint8(void *dest, char *value) {
     return 0;
 }
 
+static int parse_relative_font_size(void *dest, char *value) {
+    struct relative_font_size *rfs = dest;
+
+    static const char delims[] = " \t";
+
+    int  s_len = strlen(value);
+    char buf[s_len + 1];
+    strcpy(buf, value);
+    buf[s_len] = '\0';
+
+    char *strtok_p;
+    char *token = strtok_r(buf, delims, &strtok_p);
+
+    if (token == NULL) {
+        LOG_ERR("No minimum size.");
+        return 1;
+    }
+
+    errno    = 0;
+    rfs->min = strtod(token, NULL);
+    if (errno) {
+        LOG_ERR("Invalid minimum size.");
+        return 1;
+    }
+
+    token = strtok_r(NULL, delims, &strtok_p);
+    if (token == NULL) {
+        LOG_ERR("No relative size.");
+        return 1;
+    }
+
+    errno           = 0;
+    rfs->proportion = strtod(token, NULL);
+    if (token[strlen(token) - 1] == '%') {
+        rfs->proportion /= 100.;
+    }
+    if (errno) {
+        LOG_ERR("Invalid relative size.");
+        return 1;
+    }
+
+    token = strtok_r(NULL, delims, &strtok_p);
+    if (token == NULL) {
+        LOG_ERR("No maximum size.");
+        return 1;
+    }
+
+    errno    = 0;
+    rfs->max = strtod(token, NULL);
+    if (errno) {
+        LOG_ERR("Invalid maximum size.");
+        return 1;
+    }
+
+    if (rfs->min < 0) {
+        LOG_ERR("Minimum size can't be negative.");
+        return 1;
+    }
+
+    if (rfs->max < 0) {
+        LOG_ERR("Maximum size can't be negative.");
+        return 1;
+    }
+
+    if (rfs->proportion < 0) {
+        LOG_ERR("Proportion can't be negative.");
+        return 1;
+    }
+
+    if (rfs->min > rfs->max) {
+        LOG_ERR("Minimum size can't be greater than maximum size.");
+        return 1;
+    }
+
+    return 0;
+}
+
 static int parse_home_row_keys(void *dest, char *value) {
     char ***home_row_keys_ptr = dest;
 
@@ -288,6 +365,7 @@ static struct section_def section_defs[] = {
         MT_FIELD(selectable_bg_color, "#0304", parse_color, noop),
         MT_FIELD(selectable_border_color, "#040c", parse_color, noop),
         MT_FIELD(label_font_family, "sans-serif", parse_str, free_str),
+        MT_FIELD(label_font_size, "8 50% 100", parse_relative_font_size, noop),
         MT_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
         )
@@ -301,6 +379,7 @@ static struct section_def section_defs[] = {
         MF_FIELD(selectable_bg_color, "#1718", parse_color, noop),
         MF_FIELD(selectable_border_color, "#040c", parse_color, noop),
         MF_FIELD(label_font_family, "sans-serif", parse_str, free_str),
+        MF_FIELD(label_font_size, "12 50% 100", parse_relative_font_size, noop),
         MF_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
         )
@@ -663,4 +742,18 @@ success:
 err:
     fclose(f);
     return 1;
+}
+
+double
+compute_relative_font_size(struct relative_font_size *rfs, double height) {
+    double value = height * rfs->proportion;
+    if (value < rfs->min) {
+        return rfs->min;
+    }
+
+    if (value > rfs->max) {
+        return rfs->max;
+    }
+
+    return value;
 }

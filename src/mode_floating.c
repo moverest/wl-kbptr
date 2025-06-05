@@ -198,7 +198,9 @@ void floating_mode_render(
             cairo_set_line_width(cairo, 1);
             cairo_stroke(cairo);
 
-            cairo_set_font_size(cairo, (int)max(a.h / 2, 12));
+            cairo_set_font_size(
+                cairo, compute_relative_font_size(&config->label_font_size, a.h)
+            );
             cairo_text_extents_t te_all;
             label_selection_str(curr_label, label_selected_str);
             cairo_text_extents(cairo, label_selected_str, &te_all);

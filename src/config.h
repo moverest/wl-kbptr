@@ -11,14 +11,21 @@ struct general_config {
     uint8_t cancellation_status_code;
 };
 
+struct relative_font_size {
+    double proportion;
+    double min;
+    double max;
+};
+
 struct mode_tile_config {
-    uint32_t label_color;
-    uint32_t label_select_color;
-    uint32_t unselectable_bg_color;
-    uint32_t selectable_bg_color;
-    uint32_t selectable_border_color;
-    char    *label_font_family;
-    char    *label_symbols;
+    uint32_t                  label_color;
+    uint32_t                  label_select_color;
+    uint32_t                  unselectable_bg_color;
+    uint32_t                  selectable_bg_color;
+    uint32_t                  selectable_border_color;
+    char                     *label_font_family;
+    struct relative_font_size label_font_size;
+    char                     *label_symbols;
 };
 
 enum floating_mode_source {
@@ -34,6 +41,7 @@ struct mode_floating_config {
     uint32_t                  selectable_bg_color;
     uint32_t                  selectable_border_color;
     char                     *label_font_family;
+    struct relative_font_size label_font_size;
     char                     *label_symbols;
 };
 
@@ -134,5 +142,8 @@ int config_loader_load_cli_param(struct config_loader *loader, char *value);
  * from one of the default locations (if `file_name` is NULL).
  */
 int config_loader_load_file(struct config_loader *loader, char *file_name);
+
+double
+compute_relative_font_size(struct relative_font_size *rfs, double height);
 
 #endif

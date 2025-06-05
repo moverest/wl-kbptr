@@ -15,6 +15,7 @@ unselectable_bg_color=#2226
 selectable_bg_color=#0304
 selectable_border_color=#040c
 label_font_family=sans-serif
+label_font_size=8 50% 100
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
 [mode_floating]
@@ -25,6 +26,7 @@ unselectable_bg_color=#2226
 selectable_bg_color=#1718
 selectable_border_color=#040c
 label_font_family=sans-serif
+label_font_size=12 50% 100
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
 [mode_bisect]
