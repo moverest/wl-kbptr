@@ -970,6 +970,8 @@ int main(int argc, char **argv) {
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
+    wp_viewport_destroy(state.wp_viewport);
+
     zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
     wl_surface_destroy(state.wl_surface);
 
@@ -986,8 +988,14 @@ int main(int argc, char **argv) {
         status_code = state.config.general.cancellation_status_code;
     }
 
+    if (state.wl_virtual_pointer_mgr != NULL) {
+        zwlr_virtual_pointer_manager_v1_destroy(state.wl_virtual_pointer_mgr);
+    }
+
     free_seats(&state.seats);
     free_outputs(&state.outputs);
+
+    zxdg_output_manager_v1_destroy(state.xdg_output_manager);
 
     if (state.fractional_scale_mgr) {
         wp_fractional_scale_v1_destroy(fractional_scale);

@@ -229,6 +229,8 @@ void floating_mode_render(
 
         label_selection_incr(curr_label);
     }
+
+    label_selection_free(curr_label);
 }
 
 void floating_mode_free(void *mode_state) {

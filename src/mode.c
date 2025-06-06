@@ -97,7 +97,11 @@ bool reenter_prev_mode(struct state *state) {
 }
 
 void free_mode_states(struct state *state) {
-    for (int i = 0; i < state->current_mode && i < MAX_NUM_MODES; i++) {
+    if (state->current_mode == NO_MODE_ENTERED) {
+        return;
+    }
+
+    for (int i = 0; i <= state->current_mode; i++) {
         if (state->mode_interfaces[i] == NULL) {
             return;
         }
