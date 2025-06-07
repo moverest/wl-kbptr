@@ -8,14 +8,16 @@ project(
 )
 
 use_opencv = get_option('opencv').enabled()
+version_suffix = ''
 
 if get_option('buildtype') == 'debug'
   add_project_arguments('-DDEBUG', language: ['c', 'cpp'])
+  version_suffix = '-debug'
 endif
 
 add_project_arguments(
   '-D_GNU_SOURCE=200809L',
-  '-DVERSION="@0@"'.format(meson.project_version()),
+  '-DVERSION="@0@@1@"'.format(meson.project_version(), version_suffix),
   language: 'c',
 )
 
