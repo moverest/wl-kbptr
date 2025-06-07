@@ -63,6 +63,10 @@ int load_modes(struct state *state, char *modes) {
 }
 
 void enter_next_mode(struct state *state, struct rect area) {
+    if (has_last_mode_returned(state)) {
+        return;
+    }
+
     state->current_mode += 1;
 
     if (has_last_mode_returned(state)) {
@@ -101,7 +105,7 @@ void free_mode_states(struct state *state) {
         return;
     }
 
-    for (int i = 0; i <= state->current_mode; i++) {
+    for (int i = 0; i < state->current_mode; i++) {
         if (state->mode_interfaces[i] == NULL) {
             return;
         }
