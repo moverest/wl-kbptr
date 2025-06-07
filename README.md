@@ -22,8 +22,12 @@ Note that if you make a mistake &mdash; e.g. select the wrong area &mdash; you c
 
 The `floating` mode uses arbitrary selection areas that can be passed by the user through the standard input. Each input line represents an area defined with the `wxh+x+y` format.
 
-The areas can also be automatically detected with by setting the `mode_floating.source` to `detect`, e.g. `wl-kbptr -o modes=floating,click -o mode_floating.source=detect`. This requires the `wl-kbptr` binary to be built with the `opencv` feature &mdash; `meson build -Dopencv=enabled` &mdash; and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol.
+#### Auto-detection
+The areas can also be automatically detected with `mode_floating.source` configuration set to `detect`, e.g. `wl-kbptr -o modes=floating,click -o mode_floating.source=detect`.
 
+This requires the `wl-kbptr` binary to be built with the `opencv` feature and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol &mdash; see the [supported compositors](#supported-compositors) section and [build instructions](#from-sources) for details. Whilst it doesn't noticeably change the size of the program itself, OpenCV is a 100 MB+ dependency which is not ideal if you want a very small system which is why this is an optional feature.
+
+Most distributions will package the program with the option enabled. If not, they will usually provide two packages. You can check if the binary you have has been built with it with `wl-kbptr --version` &mdash; it should print `opencv` if supported.
 
 ### Tile mode
 [Tile Mode Demo](https://github.com/user-attachments/assets/d8c9c8dc-2733-4835-9d82-d0f5b093c382)
