@@ -789,10 +789,12 @@ int main(int argc, char **argv) {
         switch (option_char) {
         case 'h':
             print_usage();
+            config_free_values(&state.config);
             return 0;
 
         case 'v':
             print_version();
+            config_free_values(&state.config);
             return 0;
 
         case 'r':
@@ -818,6 +820,7 @@ int main(int argc, char **argv) {
 
         case 'H':
             print_default_config();
+            config_free_values(&state.config);
             return 0;
 
         case 'O':
