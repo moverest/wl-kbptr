@@ -776,6 +776,7 @@ int main(int argc, char **argv) {
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
         {"only-print", no_argument, 0, 'p'},
+        {NULL, 0, NULL, 0}
     };
 
     int   option_char          = 0;
@@ -785,7 +786,7 @@ int main(int argc, char **argv) {
     bool  only_print           = false;
     while ((option_char = getopt_long(
                 argc, argv, "hr:o:c:O:Rp", long_options, &option_index
-            )) != EOF) {
+            )) != -1) {
         switch (option_char) {
         case 'h':
             print_usage();
