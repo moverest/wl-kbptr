@@ -1019,5 +1019,9 @@ int main(int argc, char **argv) {
     config_free_values(&state.config);
     free_mode_states(&state);
 
+#if DEBUG
+    cairo_debug_reset_static_data();
+#endif
+
     return status_code;
 }
