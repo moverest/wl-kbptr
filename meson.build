@@ -9,8 +9,16 @@ project(
 
 use_opencv = get_option('opencv').enabled()
 
-add_project_arguments('-D_GNU_SOURCE=200809L', language: 'c')
-add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'c')
+if get_option('buildtype') == 'debug'
+  add_project_arguments('-DDEBUG', language: ['c', 'cpp'])
+endif
+
+add_project_arguments(
+  '-D_GNU_SOURCE=200809L',
+  '-DVERSION="@0@"'.format(meson.project_version()),
+  language: 'c',
+)
+
 cc = meson.get_compiler('c')
 
 if use_opencv
