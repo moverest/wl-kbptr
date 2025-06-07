@@ -834,6 +834,7 @@ int main(int argc, char **argv) {
 
         default:
             LOG_ERR("Unknown argument.");
+            config_free_values(&state.config);
             return 1;
         }
     }
