@@ -112,14 +112,14 @@ sudo dnf install -y \
 You can build from sources with:
 
 ```bash
-meson build
+meson setup build --buildtype=release
 meson compile -C build
 ```
 
 If you want to build the target detection feature (see [floating mode](#floating-mode)), you need to enable the `opencv` feature:
 
 ```bash
-meson build -Dopencv=enabled
+meson setup build --buildtype=release -Dopencv=enabled
 meson compile -C build
 ```
 
