@@ -63,6 +63,11 @@ void *bisect_mode_enter(struct state *state, struct rect area) {
     ms->areas[0]                 = area;
     ms->current                  = 0;
 
+    ms->label_font_face = cairo_toy_font_face_create(
+        state->config.mode_bisect.label_font_family, CAIRO_FONT_SLANT_NORMAL,
+        CAIRO_FONT_WEIGHT_NORMAL
+    );
+
     return ms;
 }
 
@@ -115,10 +120,7 @@ static void division_4_or_8_render(
     const int  font_size =
         max(min(512, sub_area_height * .9), config->label_font_size);
 
-    cairo_select_font_face(
-        cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
-        CAIRO_FONT_WEIGHT_NORMAL
-    );
+    cairo_set_font_face(cairo, ms->label_font_face);
     cairo_set_font_size(cairo, font_size);
 
     for (int i = 0; i < sub_area_columns; i++) {
@@ -491,7 +493,9 @@ static bool bisect_mode_key(
 
 void bisect_mode_reenter(struct state *state, void *mode_state) {}
 void bisect_mode_free(void *mode_state) {
-    free(mode_state);
+    struct bisect_mode_state *ms = mode_state;
+    cairo_font_face_destroy(ms->label_font_face);
+    free(ms);
 }
 
 struct mode_interface bisect_mode_interface = {

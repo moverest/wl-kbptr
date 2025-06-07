@@ -50,6 +50,11 @@ void *tile_mode_enter(struct state *state, struct rect area) {
         ms->label_symbols, ms->sub_area_rows * ms->sub_area_columns
     );
 
+    ms->label_font_face = cairo_toy_font_face_create(
+        state->config.mode_tile.label_font_family, CAIRO_FONT_SLANT_NORMAL,
+        CAIRO_FONT_WEIGHT_NORMAL
+    );
+
     return ms;
 }
 
@@ -120,10 +125,7 @@ void tile_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     struct mode_tile_config *config = &state->config.mode_tile;
     struct tile_mode_state  *ms     = mode_state;
 
-    cairo_select_font_face(
-        cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
-        CAIRO_FONT_WEIGHT_NORMAL
-    );
+    cairo_set_font_face(cairo, ms->label_font_face);
     cairo_set_font_size(
         cairo, compute_relative_font_size(
                    &config->label_font_size, ms->sub_area_height
@@ -211,6 +213,7 @@ void tile_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
 
 void tile_mode_state_free(void *mode_state) {
     struct tile_mode_state *ms = mode_state;
+    cairo_font_face_destroy(ms->label_font_face);
     label_selection_free(ms->label_selection);
     label_symbols_free(ms->label_symbols);
     free(ms);

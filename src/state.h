@@ -52,18 +52,25 @@ struct tile_mode_state {
 
     label_selection_t *label_selection;
     label_symbols_t   *label_symbols;
+
+    cairo_font_face_t *label_font_face;
 };
 
 struct floating_mode_state {
-    struct rect       *areas;
-    int                num_areas;
+    struct rect *areas;
+    int          num_areas;
+
     label_selection_t *label_selection;
     label_symbols_t   *label_symbols;
+
+    cairo_font_face_t *label_font_face;
 };
 
 struct bisect_mode_state {
     struct rect areas[BISECT_MAX_HISTORY];
     int         current;
+
+    cairo_font_face_t *label_font_face;
 };
 
 struct split_mode_state {

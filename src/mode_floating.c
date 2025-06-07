@@ -103,6 +103,12 @@ void *floating_mode_enter(struct state *state, struct rect area) {
     }
 
     ms->label_selection = label_selection_new(ms->label_symbols, ms->num_areas);
+
+    ms->label_font_face = cairo_toy_font_face_create(
+        state->config.mode_floating.label_font_family, CAIRO_FONT_SLANT_NORMAL,
+        CAIRO_FONT_WEIGHT_NORMAL
+    );
+
     return ms;
 }
 
@@ -155,10 +161,7 @@ void floating_mode_render(
     char label_selected_str[label_str_max_len];
     char label_unselected_str[label_str_max_len];
 
-    cairo_select_font_face(
-        cairo, config->label_font_family, CAIRO_FONT_SLANT_NORMAL,
-        CAIRO_FONT_WEIGHT_NORMAL
-    );
+    cairo_set_font_face(cairo, ms->label_font_face);
 
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_u32(cairo, config->unselectable_bg_color);
@@ -236,6 +239,7 @@ void floating_mode_render(
 void floating_mode_free(void *mode_state) {
     struct floating_mode_state *ms = mode_state;
     free(ms->areas);
+    cairo_font_face_destroy(ms->label_font_face);
     label_selection_free(ms->label_selection);
     label_symbols_free(ms->label_symbols);
     free(ms);
