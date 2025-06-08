@@ -88,9 +88,10 @@ bool reenter_prev_mode(struct state *state) {
         return false;
     }
 
-    state->mode_interfaces[state->current_mode]->free(
-        state->mode_states[state->current_mode]
-    );
+    void *current_mode_state = state->mode_states[state->current_mode];
+    if (current_mode_state != NULL) {
+        state->mode_interfaces[state->current_mode]->free(current_mode_state);
+    }
 
     state->current_mode--;
     state->mode_interfaces[state->current_mode]->reenter(
@@ -105,8 +106,9 @@ void free_mode_states(struct state *state) {
         return;
     }
 
-    for (int i = 0; i < state->current_mode; i++) {
-        if (state->mode_interfaces[i] == NULL) {
+    for (int i = 0; i <= state->current_mode; i++) {
+        if (state->mode_interfaces[i] == NULL ||
+            state->mode_states[i] == NULL) {
             return;
         }
 
