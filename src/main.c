@@ -785,7 +785,7 @@ int main(int argc, char **argv) {
     char *selected_output_name = NULL;
     bool  only_print           = false;
     while ((option_char = getopt_long(
-                argc, argv, "hr:o:c:O:Rp", long_options, &option_index
+                argc, argv, "hvr:o:c:O:Rp", long_options, &option_index
             )) != -1) {
         switch (option_char) {
         case 'h':
