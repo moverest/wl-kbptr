@@ -80,6 +80,12 @@ static void screencopy_frame_handle_buffer(
     uint32_t width, uint32_t height, uint32_t stride
 ) {
     struct scrcpy_state *state = data;
+
+    LOG_DEBUG(
+        "Copying capture buffer (format: 0x%08x, %dx%d, stride: %d)", format,
+        width, height, stride
+    );
+
     state->scrcpy_buffer =
         create_scrcpy_buffer(state->wl_shm, format, width, height, stride);
 
@@ -123,6 +129,10 @@ query_screenshot(struct state *state, struct rect region) {
         LOG_ERR("Could not load `zwlr_screencopy_manager_v1`.");
         exit(1);
     }
+
+    LOG_DEBUG(
+        "Capture region: %dx%d+%d+%d", region.w, region.h, region.x, region.y
+    );
 
     scrcpy_state.wl_screencopy_frame =
         zwlr_screencopy_manager_v1_capture_output_region(

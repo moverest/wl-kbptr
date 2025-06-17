@@ -12,4 +12,11 @@
 #define LOG_INFO(msg, ...) \
     fprintf(stderr, "\x1b[34minfo:\x1b[0m " msg "\n", ##__VA_ARGS__)
 
+#ifdef DEBUG
+#define LOG_DEBUG(msg, ...) \
+    fprintf(stderr, "\x1b[35mdebug:\x1b[0m " msg "\n", ##__VA_ARGS__)
+#else
+#define LOG_DEBUG(msg, ...) ((void)0)
+#endif
+
 #endif

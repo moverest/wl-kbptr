@@ -423,6 +423,18 @@ static void enter_first_mode(struct state *state) {
             return;
         }
 
+        LOG_DEBUG(
+            "Initial area: %dx%d+%d+%d", state->initial_area.w,
+            state->initial_area.h, state->initial_area.x, state->initial_area.y
+        );
+
+        LOG_DEBUG(
+            "Output: %s (position: %dx%d+%d+%d, transform: %d)",
+            state->current_output->name, state->current_output->width,
+            state->current_output->height, state->current_output->x,
+            state->current_output->y, state->current_output->transform
+        );
+
         enter_next_mode(state, state->initial_area);
 
         if (state->running) {

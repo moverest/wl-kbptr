@@ -130,6 +130,7 @@ static cv::Mat get_gray_scale_from_buffer(
         break;
 
     default:
+        LOG_DEBUG("Converting buffer with Pixman");
         image = make_pixman_image_a8r8g8b8(data, width, height, stride, format);
         if (image == NULL) {
             exit(1);
