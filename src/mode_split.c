@@ -92,13 +92,12 @@ static void render_split_render_arrow(
                 .dy2 = 1,
             },
 
-        [SPLIT_DIR_DOWN] =
-            {
-                .dx1 = -1,
-                .dy1 = -1,
-                .dx2 = 1,
-                .dy2 = -1,
-            },
+        [SPLIT_DIR_DOWN] = {
+            .dx1 = -1,
+            .dy1 = -1,
+            .dx2 = 1,
+            .dy2 = -1,
+        },
     };
 
     if (dir < 0 || dir >= 4) {

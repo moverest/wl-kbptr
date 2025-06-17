@@ -88,7 +88,10 @@ static enum bisect_division determine_division(struct rect *area) {
 }
 
 struct division_interface {
-    void (*render)(enum bisect_division, struct state *, struct bisect_mode_state *ms, cairo_t *);
+    void (*render)(
+        enum bisect_division, struct state *, struct bisect_mode_state *ms,
+        cairo_t *
+    );
 
     // `idx_to_sub_area` returns the sub-area indicated by the given index in
     // `rect` while also returning true. If the index does map to a sub-area,
@@ -371,9 +374,9 @@ static const struct division_interface division_interfaces[] = {
     [DIVISION_HORIZONTAL] =
         {.render          = division_horizontal_render,
          .idx_to_sub_area = division_horizontal_idx_to_rect},
-    [UNDIVIDABLE] =
-        {.render = undividable_render, .idx_to_sub_area = undividable_select_idx
-        },
+    [UNDIVIDABLE] = {
+        .render = undividable_render, .idx_to_sub_area = undividable_select_idx
+    },
 };
 
 static void

@@ -232,10 +232,12 @@ static void compute_rects(
     for (const std::vector<cv::Point> &contour : contours) {
         cv::Rect rect = cv::boundingRect(contour);
 
-        rects.push_back(cv::Rect2d(
-            rect.x / scale + x_off, rect.y / scale + y_off, rect.width / scale,
-            rect.height / scale
-        ));
+        rects.push_back(
+            cv::Rect2d(
+                rect.x / scale + x_off, rect.y / scale + y_off,
+                rect.width / scale, rect.height / scale
+            )
+        );
     }
 }
 

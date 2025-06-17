@@ -195,10 +195,14 @@ static int parse_home_row_keys(void *dest, char *value) {
     for (int i = 0; i < HOME_ROW_LEN_WITH_BTN; i++) {
         if (*c == 0) {
             LOG_ERR("Could not parse home row keys. Not enough characters.");
-            LOG_ERR("Exactly 11 are required. The first 8 are used to select "
-                    "the sub-areas in the bisect mode.");
-            LOG_ERR("The next three characters are used for left, right and "
-                    "middle click respectively.");
+            LOG_ERR(
+                "Exactly 11 are required. The first 8 are used to select "
+                "the sub-areas in the bisect mode."
+            );
+            LOG_ERR(
+                "The next three characters are used for left, right and "
+                "middle click respectively."
+            );
             goto err;
         }
 
