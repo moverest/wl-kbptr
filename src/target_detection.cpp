@@ -87,7 +87,7 @@ static pixman_image_t *make_pixman_image_a8r8g8b8(
     }
 
     pixman_image_t *out_image = pixman_image_create_bits(
-        PIXMAN_a8r8g8b8, width, height, NULL, width * height * 4
+        PIXMAN_a8r8g8b8, width, height, NULL, width * 4
     );
     if (out_image == NULL) {
         LOG_ERR("Failed to create (out) pixman image.");
