@@ -78,6 +78,11 @@ static pixman_image_t *make_pixman_image_a8r8g8b8(
         return NULL;
     }
 
+    LOG_DEBUG(
+        "Creating `pixman_image_t` for input image (w: %d, h: %d, stride: %d).",
+        width, height, stride
+    );
+
     pixman_image_t *in_image = pixman_image_create_bits(
         pixman_format, width, height, (uint32_t *)data, stride
     );
@@ -86,8 +91,14 @@ static pixman_image_t *make_pixman_image_a8r8g8b8(
         return NULL;
     }
 
+    int out_stride = width * sizeof(uint32_t);
+    LOG_DEBUG(
+        "Creating `pixman_image_t` for ouput image (w: %d, h: %d, stride: %d).",
+        width, height, out_stride
+    );
+
     pixman_image_t *out_image = pixman_image_create_bits(
-        PIXMAN_a8r8g8b8, width, height, NULL, width * 4
+        PIXMAN_a8r8g8b8, width, height, NULL, out_stride
     );
     if (out_image == NULL) {
         LOG_ERR("Failed to create (out) pixman image.");
