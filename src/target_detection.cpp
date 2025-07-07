@@ -179,6 +179,10 @@ static void apply_transform(
     cv::Mat &m, enum wl_output_transform transform, uint32_t &width,
     uint32_t &height
 ) {
+    const char* current_desktop = getenv("XDG_CURRENT_DESKTOP");
+    if  (current_desktop && strcmp(current_desktop, "Hyprland") == 0) {
+        return;
+    }
     cv::Mat tmp;
     bool    switch_width_height = false;
 
