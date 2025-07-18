@@ -3,6 +3,7 @@
 #include "state.h"
 #include "utils.h"
 #include "utils_cairo.h"
+#include "utils_wayland.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -58,6 +59,12 @@ enum bisect_division {
     UNDIVIDABLE,
 };
 
+static void
+bisect_mode_move_pointer(struct state *state, struct bisect_mode_state *ms) {
+    struct rect *r = &ms->areas[ms->current];
+    move_pointer(state, r->x + r->w / 2, r->y + r->h / 2, CLICK_NONE);
+}
+
 void *bisect_mode_enter(struct state *state, struct rect area) {
     struct bisect_mode_state *ms = malloc(sizeof(*ms));
     ms->areas[0]                 = area;
@@ -67,6 +74,8 @@ void *bisect_mode_enter(struct state *state, struct rect area) {
         state->config.mode_bisect.label_font_family, CAIRO_FONT_SLANT_NORMAL,
         CAIRO_FONT_WEIGHT_NORMAL
     );
+
+    bisect_mode_move_pointer(state, ms);
 
     return ms;
 }
@@ -487,6 +496,7 @@ static bool bisect_mode_key(
                 division, matched_i, area, new_area
             )) {
             ms->current++;
+            bisect_mode_move_pointer(state, ms);
             return true;
         }
     }
@@ -494,7 +504,9 @@ static bool bisect_mode_key(
     return false;
 }
 
-void bisect_mode_reenter(struct state *state, void *mode_state) {}
+void bisect_mode_reenter(struct state *state, void *mode_state) {
+    bisect_mode_move_pointer(state, mode_state);
+}
 void bisect_mode_free(void *mode_state) {
     struct bisect_mode_state *ms = mode_state;
     cairo_font_face_destroy(ms->label_font_face);
