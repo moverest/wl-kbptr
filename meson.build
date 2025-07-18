@@ -56,6 +56,7 @@ sources = [
   'src/mode_click.c',
   'src/utils.c',
   'src/utils_cairo.c',
+  'src/utils_wayland.c',
   'src/config.c',
   'src/label.c',
   protos_src,

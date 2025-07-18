@@ -4,6 +4,7 @@
 #include "mode.h"
 #include "state.h"
 #include "surface_buffer.h"
+#include "utils_wayland.h"
 #include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-screencopy-unstable-v1-client-protocol.h"
@@ -583,106 +584,6 @@ const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
     .preferred_scale = fractional_scale_preferred,
 };
 
-static void apply_transform(
-    uint32_t *x, uint32_t *y, uint32_t *width, uint32_t *height,
-    enum wl_output_transform transform
-) {
-    uint32_t temp;
-
-    switch (transform) {
-    case WL_OUTPUT_TRANSFORM_NORMAL:
-        break;
-
-    case WL_OUTPUT_TRANSFORM_90:
-        temp = *x;
-        *x   = *y;
-        *y   = *width - temp;
-
-        temp    = *width;
-        *width  = *height;
-        *height = temp;
-        break;
-
-    case WL_OUTPUT_TRANSFORM_180:
-        *x = *width - *x;
-        *y = *height - *y;
-        break;
-
-    case WL_OUTPUT_TRANSFORM_270:
-        temp = *x;
-        *x   = *height - *y;
-        *y   = temp;
-
-        temp    = *width;
-        *width  = *height;
-        *height = temp;
-        break;
-
-    case WL_OUTPUT_TRANSFORM_FLIPPED:
-        *x = *width - *x;
-        break;
-
-    case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-        *x = *width - *x;
-        apply_transform(x, y, width, height, WL_OUTPUT_TRANSFORM_90);
-        break;
-
-    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-        *x = *width - *x;
-        apply_transform(x, y, width, height, WL_OUTPUT_TRANSFORM_180);
-        break;
-
-    case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-        *x = *width - *x;
-        apply_transform(x, y, width, height, WL_OUTPUT_TRANSFORM_270);
-        break;
-    }
-}
-
-static void move_pointer(struct state *state) {
-    wl_display_roundtrip(state->wl_display);
-
-    struct zwlr_virtual_pointer_v1 *virt_pointer =
-        zwlr_virtual_pointer_manager_v1_create_virtual_pointer_with_output(
-            state->wl_virtual_pointer_mgr,
-            ((struct seat *)state->seats.next)->wl_seat,
-            state->current_output->wl_output
-        );
-
-    uint32_t x             = state->result.x + state->result.w / 2;
-    uint32_t y             = state->result.y + state->result.h / 2;
-    uint32_t output_width  = state->current_output->width;
-    uint32_t output_height = state->current_output->height;
-
-    apply_transform(
-        &x, &y, &output_width, &output_height, state->current_output->transform
-    );
-
-    zwlr_virtual_pointer_v1_motion_absolute(
-        virt_pointer, 0, x, y, output_width, output_height
-    );
-    zwlr_virtual_pointer_v1_frame(virt_pointer);
-    wl_display_roundtrip(state->wl_display);
-
-    if (state->click != CLICK_NONE) {
-        int btn = 271 + state->click;
-
-        zwlr_virtual_pointer_v1_button(
-            virt_pointer, 0, btn, WL_POINTER_BUTTON_STATE_PRESSED
-        );
-        zwlr_virtual_pointer_v1_frame(virt_pointer);
-        wl_display_roundtrip(state->wl_display);
-
-        zwlr_virtual_pointer_v1_button(
-            virt_pointer, 0, btn, WL_POINTER_BUTTON_STATE_RELEASED
-        );
-        zwlr_virtual_pointer_v1_frame(virt_pointer);
-        wl_display_roundtrip(state->wl_display);
-    }
-
-    zwlr_virtual_pointer_v1_destroy(virt_pointer);
-}
-
 static struct output *
 find_output_from_rect(struct state *state, struct rect *rect) {
     struct output *output;
@@ -984,6 +885,11 @@ int main(int argc, char **argv) {
     state.wp_viewport =
         wp_viewporter_get_viewport(state.wp_viewporter, state.wl_surface);
 
+    struct wl_region *wl_region =
+        wl_compositor_create_region(state.wl_compositor);
+    wl_region_add(wl_region, 0, 0, 0, 0);
+    wl_surface_set_input_region(state.wl_surface, wl_region);
+
     wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
@@ -991,6 +897,7 @@ int main(int argc, char **argv) {
 
     zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
     wl_surface_destroy(state.wl_surface);
+    wl_region_destroy(wl_region);
 
     surface_buffer_pool_destroy(&state.surface_buffer_pool);
     wl_display_roundtrip(state.wl_display);
@@ -999,7 +906,10 @@ int main(int argc, char **argv) {
     if (state.result.x != -1) {
         print_result(&state);
         if (!only_print) {
-            move_pointer(&state);
+            move_pointer(
+                &state, state.result.x + state.result.w / 2,
+                state.result.y + state.result.h / 2, state.click
+            );
         }
     } else {
         status_code = state.config.general.cancellation_status_code;
