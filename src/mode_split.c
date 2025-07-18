@@ -3,6 +3,7 @@
 #include "state.h"
 #include "utils.h"
 #include "utils_cairo.h"
+#include "utils_wayland.h"
 
 #include <stdlib.h>
 
@@ -16,10 +17,19 @@ enum split_dir {
     SPLIT_DIR_RIGHT = 3,
 };
 
+static void
+split_mode_move_pointer(struct state *state, struct split_mode_state *ms) {
+    struct rect *r = &ms->areas[ms->current];
+    move_pointer(state, r->x + r->w / 2, r->y + r->h / 2, CLICK_NONE);
+}
+
 void *split_mode_enter(struct state *state, struct rect area) {
     struct split_mode_state *ms = malloc(sizeof(*ms));
     ms->areas[0]                = area;
     ms->current                 = 0;
+
+    split_mode_move_pointer(state, ms);
+
     return ms;
 }
 
@@ -253,6 +263,8 @@ split_mode_split(struct state *state, void *mode_state, enum split_dir dir) {
     }
 
     ms->current++;
+    split_mode_move_pointer(state, ms);
+
     return true;
 }
 
@@ -274,6 +286,7 @@ static bool split_mode_key(
     case XKB_KEY_BackSpace:
         if (ms->current > 0) {
             ms->current--;
+            split_mode_move_pointer(state, ms);
         } else {
             reenter_prev_mode(state);
         }
@@ -335,7 +348,9 @@ static bool split_mode_key(
     return false;
 }
 
-void split_mode_reenter(struct state *state, void *mode_state) {}
+void split_mode_reenter(struct state *state, void *mode_state) {
+    split_mode_move_pointer(state, mode_state);
+}
 void split_mode_free(void *mode_state) {
     free(mode_state);
 }
