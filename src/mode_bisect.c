@@ -161,7 +161,7 @@ static void division_4_or_8_render(
 
             if (inner_labels) {
                 cairo_set_source_u32(cairo, config->label_color);
-                char *label = state->home_row[i + j * sub_area_rows];
+                char *label = state->home_row[i + j * sub_area_columns];
                 cairo_text_extents_t te;
                 cairo_text_extents(cairo, label, &te);
                 cairo_move_to(
