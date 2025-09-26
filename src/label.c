@@ -111,6 +111,7 @@ label_symbols_t *label_symbols_from_strs(char *s, char *display_s) {
     } else {
         void *result = label_symbols_init(display_s, label_symbols);
         if (result == NULL) {
+            label_symbols_free(label_symbols);
             return NULL;
         }
     }
