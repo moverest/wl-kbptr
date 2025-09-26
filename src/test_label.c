@@ -104,6 +104,38 @@ int main() {
         return 12;
     }
 
+    // Tests with the unicode character not at end-of-string
+
+    label_symbols_t *alt_label_symbols = label_symbols_from_str("abcdéfghi");
+    label_selection_t *alt_selection =
+        label_selection_new(alt_label_symbols, 100);
+    int alt_selection_str_buf_size =
+        label_selection_str_max_len(alt_selection) + 1;
+    if (alt_selection_str_buf_size != 7) {
+        LOG_ERR(
+            "Wrong label_selection_str_buffer_size = %d",
+            alt_selection_str_buf_size
+        );
+
+        return 13;
+    }
+
+    char *alt_symbols[] = {
+        "a", "b", "c", "d", "é", "f", "g", "h", "i",
+    };
+
+    for (int i = 0; i < 9; i++) {
+        int symbol_idx =
+            label_symbols_find_idx(alt_label_symbols, alt_symbols[i]);
+        if (symbol_idx != i) {
+            LOG_ERR(
+                "Wrong index %d (expected %d) for symbol '%s'", symbol_idx, i,
+                symbols[i]
+            );
+            return 14;
+        }
+    }
+
     label_selection_free(label_selection);
     label_symbols_free(label_symbols);
     return 0;

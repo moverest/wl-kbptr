@@ -220,7 +220,7 @@ static int label_symbols_max_str_len(label_symbols_t *label_symbols) {
         max_len = curr_len;
     }
 
-    return curr_len;
+    return max_len;
 }
 
 int label_selection_str_max_len(label_selection_t *label_selection) {
