@@ -69,39 +69,50 @@ label_symbols_t *label_symbols_from_str(char *s) {
    return label_symbols_from_strs(s, s);
 }
 
-label_symbols_t *label_symbols_from_strs(char *s, char *display_s) {
-    int len         = sizeof(label_symbols_t);
-    int num_symbols = 0;
-
+// Set up label symbols from source string. Return NULL for errors.
+// If label_symbols is NULL, allocate one. Else, only fill its display_data.
+static label_symbols_t *label_symbols_init(
+    char *s, label_symbols_t *label_symbols
+) {
+    int  num_symbols = 0;
+    int  len         = 0;
     if (measure_label_symbols(s, &len, &num_symbols)) {
         return NULL;
     }
 
-    label_symbols_t *label_symbols = malloc(len);
+    char *data;
 
-    label_symbols->num_symbols  = num_symbols;
-    label_symbols->display_data = NULL;
-
-    fill_label_symbols_data(s, num_symbols, label_symbols->data);
-
-    if (s == display_s || display_s[0] == '\0' || strcmp(s, display_s) == 0) {
-        label_symbols->display_data = label_symbols->data;
+    if (label_symbols == NULL) {
+        label_symbols               = malloc(len + sizeof(label_symbols_t));
+        label_symbols->num_symbols  = num_symbols;
+        label_symbols->display_data = NULL;
+        data                        = label_symbols->data;
     } else {
-        int disp_len = 0;
-        int num_display = 0;
-
-        if (measure_label_symbols(display_s, &disp_len, &num_display)) {
-            return NULL;
-        }
-
-        if (num_display != num_symbols) {
+        data = label_symbols->display_data = malloc(len);
+        if (num_symbols != label_symbols->num_symbols) {
             LOG_ERR("Label display symbols must be empty or same length as label symbols.");
             return NULL;
         }
+    }
 
-        label_symbols->display_data = malloc(disp_len);
+    fill_label_symbols_data(s, num_symbols, data);
+    return label_symbols;
+}
 
-        fill_label_symbols_data(display_s, num_display, label_symbols->display_data);
+label_symbols_t *label_symbols_from_strs(char *s, char *display_s) {
+    label_symbols_t *label_symbols = label_symbols_init(s, NULL);
+    if (label_symbols == NULL) {
+        return NULL;
+    }
+
+    if (s == display_s || display_s[0] == '\0' || strcmp(s, display_s) == 0) {
+        // When possible, don't use a second array.
+        label_symbols->display_data = label_symbols->data;
+    } else {
+        void *result = label_symbols_init(display_s, label_symbols);
+        if (result == NULL) {
+            return NULL;
+        }
     }
 
     return label_symbols;
