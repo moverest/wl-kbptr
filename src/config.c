@@ -372,7 +372,8 @@ static struct section_def section_defs[] = {
         MT_FIELD(label_font_size, "8 50% 100", parse_relative_font_size, noop),
         MT_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
-        )
+        ),
+        MT_FIELD(label_display, "", parse_str, free_str)
     ),
     SECTION(
         mode_floating,

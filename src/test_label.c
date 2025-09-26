@@ -5,8 +5,8 @@
 
 int main() {
     label_symbols_t *label_symbols = label_symbols_from_str("abcdé");
-    if (!label_symbols) {
-        LOG_ERR("`label_symbolss_from_str` should not have returned null.");
+    if (label_symbols == NULL) {
+        LOG_ERR("`label_symbols_from_str` should not have returned null.");
         return 1;
     }
 
@@ -134,6 +134,36 @@ int main() {
             );
             return 14;
         }
+    }
+
+    // These have the same number of code points and different byte lenths.
+    label_symbols_t *display = label_symbols_from_strs("abcde", "ABCDÉ");
+    label_symbols_t *display2 = label_symbols_from_strs("abcdé", "ABCDE");
+    if (display == NULL || display2 == NULL) {
+        LOG_ERR("`label_symbols_from_strs` should not have returned null.");
+        return 15;
+    }
+    label_symbols_free(display2);
+
+    LOG_WARN("A 'Label display symbols must be empty...' error is expected below.");
+    label_symbols_t *display3 = label_symbols_from_strs("abcd", "abcde");
+    if (display3 != NULL) {
+        LOG_ERR("`label_symbols_from_strs` should return null for different-length strings.");
+        return 16;
+    }
+    label_symbols_free(display3);
+
+    // Make sure the unicode measured in the second string
+    label_selection_t *display_selection =
+        label_selection_new(display, 100);
+    int display_selection_buf_size =
+        label_selection_str_max_len(display_selection) + 1;
+    if (display_selection_buf_size != 7) {
+        LOG_ERR(
+            "Wrong label_selection_str_buffer_size = %d",
+            display_selection_buf_size
+        );
+        return 17;
     }
 
     label_selection_free(label_selection);

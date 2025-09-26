@@ -4,15 +4,18 @@
 #include <stdbool.h>
 
 typedef struct {
-    /*         data             data[num_symbols]
-     *         |                |
-     *  | 4 || 0 | 2 | 4 | 6 ||`a`| 0 |`b`| 0 |`c`| 0 |`d`| 0 |
-     *    ^    ^-----------^    ^---------------------------^
-     *    |       offsets               strings
-     *    |
+    /*               data             data[num_symbols]
+     *               |                |
+     *  | 4 ||xxxx|| 0 | 2 | 4 | 6 ||`a`| 0 |`b`| 0 |`c`| 0 |`d`| 0 |
+     *    ^   ^      ^-----------^    ^---------------------------^
+     *    |   |         offsets               strings
+     *    |   pointer to display data
      *  number of symbols
+     *
+     * The display data is identical in structure to the data.
      */
     unsigned char num_symbols;
+    char         *display_data;
     char          data[];
 } label_symbols_t;
 
@@ -27,6 +30,11 @@ typedef struct {
 // Create a `label_symbols_t` from a string of characters.
 // Returns `NULL` upon error.
 label_symbols_t *label_symbols_from_str(char *s);
+// Create a `label_symbols_t` from a string of key characters and a
+// possibly-empty string of label characters.
+// Returns `NULL` upon error.
+label_symbols_t *label_symbols_from_strs(char *s, char *display_s);
+
 
 // Free memory of a `label_symbols_t`.
 void label_symbols_free(label_symbols_t *ls);
