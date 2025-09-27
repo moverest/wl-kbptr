@@ -83,12 +83,12 @@ static label_symbols_t *label_symbols_init(
     char *data;
 
     if (label_symbols == NULL) {
-        label_symbols               = malloc(len + sizeof(label_symbols_t));
-        label_symbols->num_symbols  = num_symbols;
-        label_symbols->display_data = NULL;
-        data                        = label_symbols->data;
+        label_symbols              = malloc(len + sizeof(label_symbols_t));
+        label_symbols->num_symbols = num_symbols;
+        label_symbols->symbols     = NULL;
+        data                       = label_symbols->keys;
     } else {
-        data = label_symbols->display_data = malloc(len);
+        data = label_symbols->symbols = malloc(len);
         if (num_symbols != label_symbols->num_symbols) {
             LOG_ERR("Label display symbols must be empty or same length as label symbols.");
             return NULL;
@@ -111,7 +111,7 @@ label_symbols_t *label_symbols_from_strs(char *symbols, char *keys) {
 
     if (symbols == keys || strcmp(symbols, keys) == 0) {
         // When possible, don't use a second array.
-        label_symbols->display_data = label_symbols->data;
+        label_symbols->symbols = label_symbols->keys;
     } else {
         void *result = label_symbols_init(symbols, label_symbols);
         if (result == NULL) {
@@ -124,8 +124,8 @@ label_symbols_t *label_symbols_from_strs(char *symbols, char *keys) {
 }
 
 void label_symbols_free(label_symbols_t *ls) {
-    if (ls != NULL && ls->display_data != ls->data) {
-        free(ls->display_data);
+    if (ls != NULL && ls->symbols != ls->keys) {
+        free(ls->symbols);
     }
     free(ls);
 }
@@ -136,8 +136,8 @@ char *label_symbols_idx_to_key_ptr(label_symbols_t *label_symbols, int idx) {
         return NULL;
     }
 
-    return ((char *)label_symbols->data) + label_symbols->num_symbols +
-           ((unsigned char *)label_symbols->data)[idx];
+    return ((char *)label_symbols->keys) + label_symbols->num_symbols +
+           ((unsigned char *)label_symbols->keys)[idx];
 }
 
 char *label_symbols_idx_to_display_ptr(label_symbols_t *label_symbols, int idx) {
@@ -146,8 +146,8 @@ char *label_symbols_idx_to_display_ptr(label_symbols_t *label_symbols, int idx) 
         return NULL;
     }
 
-    return label_symbols->display_data + label_symbols->num_symbols +
-           ((unsigned char *)label_symbols->display_data)[idx];
+    return label_symbols->symbols + label_symbols->num_symbols +
+           ((unsigned char *)label_symbols->symbols)[idx];
 }
 
 int label_symbols_find_key_idx(label_symbols_t *label_symbols, char *s) {
@@ -279,7 +279,7 @@ int label_selection_incr(label_selection_t *label_selection) {
 // Max string length for a single symbol in a label
 static int label_symbols_max_str_len(label_symbols_t *label_symbols) {
     int            num_symbols = label_symbols->num_symbols;
-    unsigned char *indices     = (unsigned char *)label_symbols->data;
+    unsigned char *indices     = (unsigned char *)label_symbols->keys;
 
     int curr_len = 0;
     int max_len  = strlen(
