@@ -44,6 +44,7 @@ struct mode_floating_config {
     char                     *label_font_family;
     struct relative_font_size label_font_size;
     char                     *label_symbols;
+    char                     *keys;
 };
 
 struct mode_bisect_config {

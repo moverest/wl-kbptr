@@ -77,8 +77,10 @@ static void get_area_from_screenshot(
 void *floating_mode_enter(struct state *state, struct rect area) {
     struct floating_mode_state *ms = malloc(sizeof(*ms));
 
-    ms->label_symbols =
-        label_symbols_from_str(state->config.mode_floating.label_symbols);
+    ms->label_symbols = label_symbols_from_strs(
+        state->config.mode_floating.label_symbols,
+        state->config.mode_floating.keys
+    );
 
     if (ms->label_symbols == NULL) {
         ms->areas           = NULL;
