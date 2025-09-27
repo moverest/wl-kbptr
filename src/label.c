@@ -99,21 +99,21 @@ static label_symbols_t *label_symbols_init(
     return label_symbols;
 }
 
-label_symbols_t *label_symbols_from_strs(char *s, char *display_s) {
-    if (display_s[0] == '\0') {
-        display_s = s;
+label_symbols_t *label_symbols_from_strs(char *symbols, char *keys) {
+    if (keys[0] == '\0') {
+        keys = symbols;
     }
 
-    label_symbols_t *label_symbols = label_symbols_init(display_s, NULL);
+    label_symbols_t *label_symbols = label_symbols_init(keys, NULL);
     if (label_symbols == NULL) {
         return NULL;
     }
 
-    if (s == display_s || strcmp(s, display_s) == 0) {
+    if (symbols == keys || strcmp(symbols, keys) == 0) {
         // When possible, don't use a second array.
         label_symbols->display_data = label_symbols->data;
     } else {
-        void *result = label_symbols_init(s, label_symbols);
+        void *result = label_symbols_init(symbols, label_symbols);
         if (result == NULL) {
             label_symbols_free(label_symbols);
             return NULL;

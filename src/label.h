@@ -30,10 +30,10 @@ typedef struct {
 // Create a `label_symbols_t` from a string of characters.
 // Returns `NULL` upon error.
 label_symbols_t *label_symbols_from_str(char *s);
-// Create a `label_symbols_t` from a string of key characters and a
-// possibly-empty string of label characters.
+// Create a `label_symbols_t` from a string of label characters and a
+// possibly-empty string of key characters.
 // Returns `NULL` upon error.
-label_symbols_t *label_symbols_from_strs(char *s, char *display_s);
+label_symbols_t *label_symbols_from_strs(char *symbols, char *keys);
 
 
 // Free memory of a `label_symbols_t`.
