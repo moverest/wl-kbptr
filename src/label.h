@@ -39,9 +39,9 @@ label_symbols_t *label_symbols_from_strs(char *s, char *display_s);
 // Free memory of a `label_symbols_t`.
 void label_symbols_free(label_symbols_t *ls);
 
-// Get pointer to string of the symbol at given index.
+// Get pointer to string of the key at given index.
 // Returns value <0 upon error.
-char *label_symbols_idx_to_ptr(label_symbols_t *label_symbols, int idx);
+char *label_symbols_idx_to_key_ptr(label_symbols_t *label_symbols, int idx);
 
 // Find key index from given string.
 // Returns value <0 upon error.

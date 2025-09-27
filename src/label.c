@@ -126,7 +126,7 @@ void label_symbols_free(label_symbols_t *ls) {
     free(ls);
 }
 
-char *label_symbols_idx_to_ptr(label_symbols_t *label_symbols, int idx) {
+char *label_symbols_idx_to_key_ptr(label_symbols_t *label_symbols, int idx) {
     if (idx < 0 || idx >= label_symbols->num_symbols) {
         LOG_ERR("Label symbols index (%d) out of bound.", idx);
         return NULL;
@@ -148,7 +148,7 @@ char *label_symbols_idx_to_display_ptr(label_symbols_t *label_symbols, int idx) 
 
 int label_symbols_find_key_idx(label_symbols_t *label_symbols, char *s) {
     for (int i = 0; i < label_symbols->num_symbols; i++) {
-        if (strcmp(label_symbols_idx_to_ptr(label_symbols, i), s) == 0) {
+        if (strcmp(label_symbols_idx_to_key_ptr(label_symbols, i), s) == 0) {
             return i;
         }
     }

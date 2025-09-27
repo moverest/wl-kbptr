@@ -15,7 +15,7 @@ int main() {
         return 2;
     }
 
-    char *s = label_symbols_idx_to_ptr(label_symbols, 0);
+    char *s = label_symbols_idx_to_key_ptr(label_symbols, 0);
     if (strcmp(s, "a")) {
         LOG_ERR("No match");
         LOG_ERR("Given string: '%s'", s);
