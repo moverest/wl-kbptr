@@ -100,16 +100,20 @@ static label_symbols_t *label_symbols_init(
 }
 
 label_symbols_t *label_symbols_from_strs(char *s, char *display_s) {
-    label_symbols_t *label_symbols = label_symbols_init(s, NULL);
+    if (display_s[0] == '\0') {
+        display_s = s;
+    }
+
+    label_symbols_t *label_symbols = label_symbols_init(display_s, NULL);
     if (label_symbols == NULL) {
         return NULL;
     }
 
-    if (s == display_s || display_s[0] == '\0' || strcmp(s, display_s) == 0) {
+    if (s == display_s || strcmp(s, display_s) == 0) {
         // When possible, don't use a second array.
         label_symbols->display_data = label_symbols->data;
     } else {
-        void *result = label_symbols_init(display_s, label_symbols);
+        void *result = label_symbols_init(s, label_symbols);
         if (result == NULL) {
             label_symbols_free(label_symbols);
             return NULL;

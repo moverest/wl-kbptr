@@ -137,8 +137,8 @@ int main() {
     }
 
     // These have the same number of code points and different byte lenths.
-    label_symbols_t *display = label_symbols_from_strs("abcde", "ABCDÉ");
-    label_symbols_t *display2 = label_symbols_from_strs("abcdé", "ABCDE");
+    label_symbols_t *display = label_symbols_from_strs("ABCDÉ", "abcde");
+    label_symbols_t *display2 = label_symbols_from_strs("ABCDE", "abcdé");
     if (display == NULL || display2 == NULL) {
         LOG_ERR("`label_symbols_from_strs` should not have returned null.");
         return 15;
