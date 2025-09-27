@@ -695,11 +695,11 @@ int main(int argc, char **argv) {
     int    num_cli_configs      = 0;
     char **cli_configs          = malloc(10 * sizeof(char*));
     int    cli_configs_len      = 10;
-    int   option_char          = 0;
-    int   option_index         = 0;
-    char *config_filename      = NULL;
-    char *selected_output_name = NULL;
-    bool  only_print           = false;
+    int    option_char          = 0;
+    int    option_index         = 0;
+    char  *config_filename      = NULL;
+    char  *selected_output_name = NULL;
+    bool   only_print           = false;
     while ((option_char = getopt_long(
                 argc, argv, "hvr:o:c:O:Rp", long_options, &option_index
             )) != -1) {
