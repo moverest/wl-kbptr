@@ -26,7 +26,7 @@ struct mode_tile_config {
     char                     *label_font_family;
     struct relative_font_size label_font_size;
     char                     *label_symbols;
-    char                     *label_display;
+    char                     *keys;
 };
 
 enum floating_mode_source {

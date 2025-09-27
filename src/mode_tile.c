@@ -40,7 +40,7 @@ void *tile_mode_enter(struct state *state, struct rect area) {
 
     ms->label_symbols = label_symbols_from_strs(
         state->config.mode_tile.label_symbols,
-        state->config.mode_tile.label_display
+        state->config.mode_tile.keys
     );
     if (ms->label_symbols == NULL) {
         ms->label_selection = NULL;
