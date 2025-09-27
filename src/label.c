@@ -146,7 +146,7 @@ char *label_symbols_idx_to_display_ptr(label_symbols_t *label_symbols, int idx) 
            ((unsigned char *)label_symbols->display_data)[idx];
 }
 
-int label_symbols_find_idx(label_symbols_t *label_symbols, char *s) {
+int label_symbols_find_key_idx(label_symbols_t *label_symbols, char *s) {
     for (int i = 0; i < label_symbols->num_symbols; i++) {
         if (strcmp(label_symbols_idx_to_ptr(label_symbols, i), s) == 0) {
             return i;

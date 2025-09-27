@@ -43,9 +43,9 @@ void label_symbols_free(label_symbols_t *ls);
 // Returns value <0 upon error.
 char *label_symbols_idx_to_ptr(label_symbols_t *label_symbols, int idx);
 
-// Find symbol index from given string.
+// Find key index from given string.
 // Returns value <0 upon error.
-int label_symbols_find_idx(label_symbols_t *label_symbols, char *s);
+int label_symbols_find_key_idx(label_symbols_t *label_symbols, char *s);
 
 // Create a `label_selection_t`.
 label_selection_t *

@@ -27,7 +27,7 @@ int main() {
     };
 
     for (int i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++) {
-        int symbol_idx = label_symbols_find_idx(label_symbols, symbols[i]);
+        int symbol_idx = label_symbols_find_key_idx(label_symbols, symbols[i]);
         if (symbol_idx != i) {
             LOG_ERR(
                 "Wrong index %d (expected %d) for symbol '%s'", symbol_idx, i,
@@ -126,7 +126,7 @@ int main() {
 
     for (int i = 0; i < 9; i++) {
         int symbol_idx =
-            label_symbols_find_idx(alt_label_symbols, alt_symbols[i]);
+            label_symbols_find_key_idx(alt_label_symbols, alt_symbols[i]);
         if (symbol_idx != i) {
             LOG_ERR(
                 "Wrong index %d (expected %d) for symbol '%s'", symbol_idx, i,

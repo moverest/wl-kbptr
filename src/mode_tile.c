@@ -104,7 +104,7 @@ static bool tile_mode_key(
         state->running = false;
         break;
     default:;
-        int symbol_idx = label_symbols_find_idx(ms->label_symbols, text);
+        int symbol_idx = label_symbols_find_key_idx(ms->label_symbols, text);
         if (symbol_idx < 0) {
             return false;
         }
