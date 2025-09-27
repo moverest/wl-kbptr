@@ -272,47 +272,21 @@ int label_selection_incr(label_selection_t *label_selection) {
     return 0;
 }
 
-// Given an array of the start indices of the elements of a
-// contiguous, heterogenous array, return the length of the longest
-// element, excluding the last. The length of the last may be provided
-// separately.
-static int index_array_max_len(
-    unsigned char *indices, int num_symbols, int last_len
-) {
-    int max_len  = last_len;
+// Max string length for a single symbol in a label
+static int label_symbols_max_str_len(label_symbols_t *label_symbols) {
+    int            num_symbols = label_symbols->num_symbols;
+    unsigned char *indices     = (unsigned char *)label_symbols->data;
+
     int curr_len = 0;
+    int max_len  = strlen(
+        label_symbols_idx_to_display_ptr(label_symbols, num_symbols - 1)
+    );
 
     for (int i = 1; i < num_symbols; i++) {
         // Compute length of symbol at index i - 1
         curr_len = indices[i] - indices[i - 1] - 1;
         if (curr_len > max_len) {
             max_len = curr_len;
-        }
-    }
-
-    return max_len;
-}
-
-// Gets max str len for both symbols and display symbols
-static int label_symbols_max_str_len(label_symbols_t *label_symbols) {
-    int num_symbols = label_symbols->num_symbols;
-
-    int max_len = index_array_max_len(
-        (unsigned char *)label_symbols->data,
-        num_symbols,
-        strlen(label_symbols_idx_to_ptr(label_symbols, num_symbols - 1))
-    );
-
-    // Measure display symbols as well, if they are present
-    if (label_symbols->display_data != label_symbols->data) {
-        int max_disp_len = index_array_max_len(
-            (unsigned char *)label_symbols->display_data,
-            num_symbols,
-            strlen(label_symbols_idx_to_display_ptr(label_symbols, num_symbols - 1))
-        );
-
-        if (max_disp_len > max_len) {
-            max_len = max_disp_len;
         }
     }
 
