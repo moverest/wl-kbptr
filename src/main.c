@@ -692,6 +692,9 @@ int main(int argc, char **argv) {
         {NULL, 0, NULL, 0}
     };
 
+    int    num_cli_configs      = 0;
+    char **cli_configs          = malloc(10 * sizeof(char*));
+    int    cli_configs_len      = 10;
     int   option_char          = 0;
     int   option_index         = 0;
     char *config_filename      = NULL;
@@ -723,9 +726,12 @@ int main(int argc, char **argv) {
             break;
 
         case 'o':
-            if (config_loader_load_cli_param(&config_loader, optarg) != 0) {
-                return 1;
-            };
+            if (num_cli_configs >= cli_configs_len) {
+                cli_configs_len += 10;
+                cli_configs =
+                    realloc(cli_configs, cli_configs_len * sizeof(char*));
+            }
+            cli_configs[num_cli_configs++] = optarg;
             break;
 
         case 'c':
@@ -761,6 +767,14 @@ int main(int argc, char **argv) {
         free(config_filename);
         config_filename = NULL;
     }
+
+    for (int i = 0; i < num_cli_configs; i++) {
+        if (config_loader_load_cli_param(&config_loader, cli_configs[i])) {
+            return 1;
+        }
+    }
+    free(cli_configs);
+    cli_configs = NULL;
 
     if (state.config.general.home_row_keys != NULL) {
         state.home_row = state.config.general.home_row_keys;
