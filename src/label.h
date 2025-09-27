@@ -4,19 +4,19 @@
 #include <stdbool.h>
 
 typedef struct {
-    /*               keys             keys[num_symbols]
+    /*               symbols          symbols[num_symbols]
      *               |                |
      *  | 4 ||xxxx|| 0 | 2 | 4 | 6 ||`a`| 0 |`b`| 0 |`c`| 0 |`d`| 0 |
      *    ^   ^      ^-----------^    ^---------------------------^
      *    |   |         offsets               strings
-     *    |   pointer to symbol data
+     *    |   pointer to key data
      *  number of symbols
      *
-     * The symbol field's data is identical in structure to the keys field.
+     * The keys field's data is identical in structure to the symbols field.
      */
     unsigned char num_symbols;
-    char         *symbols;
-    char          keys[];
+    char         *keys;
+    char          symbols[];
 } label_symbols_t;
 
 typedef struct {

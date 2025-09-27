@@ -85,10 +85,10 @@ static label_symbols_t *label_symbols_init(
     if (label_symbols == NULL) {
         label_symbols              = malloc(len + sizeof(label_symbols_t));
         label_symbols->num_symbols = num_symbols;
-        label_symbols->symbols     = NULL;
-        data                       = label_symbols->keys;
+        label_symbols->keys        = NULL;
+        data                       = label_symbols->symbols;
     } else {
-        data = label_symbols->symbols = malloc(len);
+        data = label_symbols->keys = malloc(len);
         if (num_symbols != label_symbols->num_symbols) {
             LOG_ERR("Label display symbols must be empty or same length as label symbols.");
             return NULL;
@@ -100,20 +100,16 @@ static label_symbols_t *label_symbols_init(
 }
 
 label_symbols_t *label_symbols_from_strs(char *symbols, char *keys) {
-    if (keys[0] == '\0') {
-        keys = symbols;
-    }
-
-    label_symbols_t *label_symbols = label_symbols_init(keys, NULL);
+    label_symbols_t *label_symbols = label_symbols_init(symbols, NULL);
     if (label_symbols == NULL) {
         return NULL;
     }
 
-    if (symbols == keys || strcmp(symbols, keys) == 0) {
+    if (symbols == keys || keys[0] == '\0' || strcmp(symbols, keys) == 0) {
         // When possible, don't use a second array.
-        label_symbols->symbols = label_symbols->keys;
+        label_symbols->keys = label_symbols->symbols;
     } else {
-        void *result = label_symbols_init(symbols, label_symbols);
+        void *result = label_symbols_init(keys, label_symbols);
         if (result == NULL) {
             label_symbols_free(label_symbols);
             return NULL;
@@ -125,7 +121,7 @@ label_symbols_t *label_symbols_from_strs(char *symbols, char *keys) {
 
 void label_symbols_free(label_symbols_t *ls) {
     if (ls != NULL && ls->symbols != ls->keys) {
-        free(ls->symbols);
+        free(ls->keys);
     }
     free(ls);
 }
