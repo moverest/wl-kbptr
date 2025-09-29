@@ -99,18 +99,15 @@ apk add wl-kbptr
 ```
 ### Fedora
 
-As of now there is no official package through dnf. So you will need to install the dependencies and then run the steps described in the **From sources** section.
+If you are using Fedora, you can install the `wl-kbptr` package from the [onesaladleaf/wl-kbptr](https://copr.fedorainfracloud.org/coprs/onesaladleaf/wl-kbptr) copr repository.
 
 ```bash
-sudo dnf install -y \
-    meson \
-    wayland-protocols-devel \
-    gcc \
-    libwayland-client  \
-    cmake \
-    wayland-devel \
-    libxkbcommon-devel \
-    cairo-devel
+sudo dnf copr enable onesaladleaf/wl-kbptr
+sudo dnf install wl-kbptr
+
+# for Fedora Silverblue:
+sudo dnf copr enable onesaladleaf/wl-kbptr
+rpm-ostree install wl-kbptr
 ```
 
 ### From sources
