@@ -81,6 +81,7 @@ void *floating_mode_enter(struct state *state, struct rect area) {
         label_symbols_from_str(state->config.mode_floating.label_symbols);
 
     if (ms->label_symbols == NULL) {
+        ms->areas           = NULL;
         ms->label_selection = NULL;
         state->running      = false;
         return ms;
