@@ -78,10 +78,16 @@ Here are the compositors with which it has been tested:
 
 If you are using Arch Linux, you can install the [`wl-kbptr` AUR package](https://aur.archlinux.org/packages/wl-kbptr).
 
-You can build and install the package with:
-
+Recommended way to build and install the package directly from the AUR (gets all required files):
 ```bash
-curl 'https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=wl-kbptr' -o PKGBUILD
+git clone https://aur.archlinux.org/wl-kbptr.git
+cd wl-kbptr
+makepkg -si
+```
+
+Alternatively, if you only want the `PKGBUILD`:
+```bash
+curl -L 'https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=wl-kbptr' -o PKGBUILD
 makepkg -si
 ```
 
