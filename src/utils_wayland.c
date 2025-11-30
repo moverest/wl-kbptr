@@ -64,6 +64,11 @@ static void _apply_transform(
 void move_pointer(
     struct state *state, uint32_t x, uint32_t y, enum click click
 ) {
+    if (!state->wl_virtual_pointer_mgr) {
+        // We running in `--print-only` mode.
+        return;
+    }
+
     wl_display_roundtrip(state->wl_display);
 
     struct zwlr_virtual_pointer_v1 *virt_pointer =
