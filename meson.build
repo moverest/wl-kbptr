@@ -4,7 +4,7 @@ project(
   meson_version: '>=1.1',
   default_options: ['c_std=c11'],
   license: 'GPL-3.0',
-  version: '0.4.0',
+  version: '0.4.1',
 )
 
 use_opencv = get_option('opencv').enabled()
