@@ -38,8 +38,10 @@ void *tile_mode_enter(struct state *state, struct rect area) {
     ms->sub_area_width_off = ms->area.w % ms->sub_area_columns;
     ms->sub_area_width     = ms->area.w / ms->sub_area_columns;
 
-    ms->label_symbols =
-        label_symbols_from_str(state->config.mode_tile.label_symbols);
+    ms->label_symbols = label_symbols_from_strs(
+        state->config.mode_tile.label_symbols,
+        state->config.mode_tile.keys
+    );
     if (ms->label_symbols == NULL) {
         ms->label_selection = NULL;
         state->running      = false;
@@ -102,7 +104,7 @@ static bool tile_mode_key(
         state->running = false;
         break;
     default:;
-        int symbol_idx = label_symbols_find_idx(ms->label_symbols, text);
+        int symbol_idx = label_symbols_find_key_idx(ms->label_symbols, text);
         if (symbol_idx < 0) {
             return false;
         }

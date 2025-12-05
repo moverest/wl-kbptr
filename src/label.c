@@ -7,46 +7,52 @@
 #include <stdlib.h>
 #include <string.h>
 
-label_symbols_t *label_symbols_from_str(char *s) {
+// Measure the length and number of symbols in s.
+// Output is written to len and num_symbols.
+// Returns true for errors.
+static bool measure_label_symbols(char *s, int *len, int *num_symbols) {
     char *c = s;
 
     uint32_t r;
     int      c_len;
 
-    int len         = sizeof(label_symbols_t);
-    int num_symbols = 0;
-
     while ((c_len = str_to_rune(c, &r)) > 0) {
         // One byte for the indices and one of the end of string (`\0`).
-        c           += c_len;
-        len         += c_len + 2;
-        num_symbols += 1;
+        c            += c_len;
+        *len         += c_len + 2;
+        *num_symbols += 1;
     }
 
     if (c_len < 0) {
         LOG_ERR("Invalid UTF-8 input.");
-        return NULL;
+        return true;
     }
 
-    if (num_symbols < 2) {
+    if (*num_symbols < 2) {
         LOG_ERR(
-            "Not enough characters (%d). Must have at least 2.", num_symbols
+            "Not enough characters (%d). Must have at least 2.", *num_symbols
         );
-        return NULL;
+        return true;
     }
 
-    if (num_symbols >= 255) {
-        LOG_ERR("Too many characters (%d).", num_symbols);
-        return NULL;
+    if (*num_symbols >= 255) {
+        LOG_ERR("Too many characters (%d).", *num_symbols);
+        return true;
     }
 
-    label_symbols_t *label_symbols = malloc(len);
+    return false;
+}
 
-    label_symbols->num_symbols = num_symbols;
-    unsigned char *indices     = (unsigned char *)label_symbols->data;
-    char          *str         = &label_symbols->data[num_symbols];
+// Given a label symbol string and number of symbols, populate the
+// provided data array as label_symbols_t.data.
+static void fill_label_symbols_data(char *s, int num_symbols, char *data) {
+    unsigned char *indices = (unsigned char *)data;
+    char          *str     = &data[num_symbols];
 
-    c              = s;
+    uint32_t r;
+    int      c_len;
+
+    char *c        = s;
     int str_offset = 0;
     for (int i = 0; i < num_symbols; i++) {
         c_len      = str_to_rune(c, &r);
@@ -57,27 +63,92 @@ label_symbols_t *label_symbols_from_str(char *s) {
         str_offset += c_len + 1;
         c          += c_len;
     }
+}
+
+label_symbols_t *label_symbols_from_str(char *s) {
+   return label_symbols_from_strs(s, s);
+}
+
+// Set up label symbols from source string. Return NULL for errors.
+// If label_symbols is NULL, allocate one. Else, only fill its display_data.
+static label_symbols_t *label_symbols_init(
+    char *s, label_symbols_t *label_symbols
+) {
+    int  num_symbols = 0;
+    int  len         = 0;
+    if (measure_label_symbols(s, &len, &num_symbols)) {
+        return NULL;
+    }
+
+    char *data;
+
+    if (label_symbols == NULL) {
+        label_symbols              = malloc(len + sizeof(label_symbols_t));
+        label_symbols->num_symbols = num_symbols;
+        label_symbols->keys        = NULL;
+        data                       = label_symbols->symbols;
+    } else {
+        data = label_symbols->keys = malloc(len);
+        if (num_symbols != label_symbols->num_symbols) {
+            LOG_ERR("Label display symbols must be empty or same length as label symbols.");
+            return NULL;
+        }
+    }
+
+    fill_label_symbols_data(s, num_symbols, data);
+    return label_symbols;
+}
+
+label_symbols_t *label_symbols_from_strs(char *symbols, char *keys) {
+    label_symbols_t *label_symbols = label_symbols_init(symbols, NULL);
+    if (label_symbols == NULL) {
+        return NULL;
+    }
+
+    if (symbols == keys || keys[0] == '\0' || strcmp(symbols, keys) == 0) {
+        // When possible, don't use a second array.
+        label_symbols->keys = label_symbols->symbols;
+    } else {
+        void *result = label_symbols_init(keys, label_symbols);
+        if (result == NULL) {
+            label_symbols_free(label_symbols);
+            return NULL;
+        }
+    }
 
     return label_symbols;
 }
 
 void label_symbols_free(label_symbols_t *ls) {
+    if (ls != NULL && ls->symbols != ls->keys) {
+        free(ls->keys);
+    }
     free(ls);
 }
 
-char *label_symbols_idx_to_ptr(label_symbols_t *label_symbols, int idx) {
+char *label_symbols_idx_to_key_ptr(label_symbols_t *label_symbols, int idx) {
     if (idx < 0 || idx >= label_symbols->num_symbols) {
         LOG_ERR("Label symbols index (%d) out of bound.", idx);
         return NULL;
     }
 
-    return ((char *)label_symbols->data) + label_symbols->num_symbols +
-           ((unsigned char *)label_symbols->data)[idx];
+    return ((char *)label_symbols->keys) + label_symbols->num_symbols +
+           ((unsigned char *)label_symbols->keys)[idx];
 }
 
-int label_symbols_find_idx(label_symbols_t *label_symbols, char *s) {
+char *label_symbols_idx_to_display_ptr(label_symbols_t *label_symbols, int idx) {
+    if (idx < 0 || idx >= label_symbols->num_symbols) {
+        LOG_ERR("Label symbols index (%d) out of bound.", idx);
+        return NULL;
+    }
+
+    return label_symbols->symbols + label_symbols->num_symbols +
+           ((unsigned char *)label_symbols->symbols)[idx];
+}
+
+int label_symbols_find_key_idx(label_symbols_t *label_symbols, char *s) {
     for (int i = 0; i < label_symbols->num_symbols; i++) {
-        if (strcmp(label_symbols_idx_to_ptr(label_symbols, i), s) == 0) {
+        if (strcmp(label_symbols_idx_to_key_ptr(label_symbols, i), s) == 0) {
             return i;
         }
     }
@@ -106,6 +177,7 @@ void label_selection_clear(label_selection_t *label_selection) {
     label_selection->next = 0;
 }
 
+// Convert label selection to 1-dimensional index
 static int label_selection_to_partial_idx(label_selection_t *label_selection) {
     int idx         = 0;
     int factor      = 1;
@@ -170,6 +242,7 @@ int label_selection_to_idx(label_selection_t *label_selection) {
     return label_selection_to_partial_idx(label_selection);
 }
 
+// Fill a label selection's input array to correspond to the given index
 int label_selection_set_from_idx(label_selection_t *label_selection, int idx) {
     int num_symbols = label_selection->label_symbols->num_symbols;
 
@@ -199,25 +272,22 @@ int label_selection_incr(label_selection_t *label_selection) {
     return 0;
 }
 
+// Max string length for a single symbol in a label
 static int label_symbols_max_str_len(label_symbols_t *label_symbols) {
-    unsigned char *indices = (unsigned char *)label_symbols->data;
-    int            i;
+    int            num_symbols = label_symbols->num_symbols;
+    unsigned char *indices     = (unsigned char *)label_symbols->keys;
 
-    int max_len  = 0;
     int curr_len = 0;
+    int max_len  = strlen(
+        label_symbols_idx_to_display_ptr(label_symbols, num_symbols - 1)
+    );
 
-    for (i = 1; i < label_symbols->num_symbols; i++) {
+    for (int i = 1; i < num_symbols; i++) {
+        // Compute length of symbol at index i - 1
         curr_len = indices[i] - indices[i - 1] - 1;
         if (curr_len > max_len) {
             max_len = curr_len;
         }
-    }
-
-    curr_len = strlen(
-        label_symbols_idx_to_ptr(label_symbols, label_symbols->num_symbols - 1)
-    );
-    if (curr_len > max_len) {
-        max_len = curr_len;
     }
 
     return max_len;
@@ -228,13 +298,20 @@ int label_selection_str_max_len(label_selection_t *label_selection) {
            label_selection->len;
 }
 
-void label_selection_str(label_selection_t *label_selection, char *out) {
-    label_symbols_t *label_symbols = label_selection->label_symbols;
-    for (int i = 0; i < label_selection->next; i++) {
-        out = stpcpy(
+static char *label_selection_stpcpy_idx(
+    char *out, label_selection_t *label_selection, int i
+) {
+    return stpcpy(
             out,
-            label_symbols_idx_to_ptr(label_symbols, label_selection->input[i])
+            label_symbols_idx_to_display_ptr(
+                label_selection->label_symbols, label_selection->input[i]
+            )
         );
+}
+
+void label_selection_str(label_selection_t *label_selection, char *out) {
+    for (int i = 0; i < label_selection->next; i++) {
+        out = label_selection_stpcpy_idx(out, label_selection, i);
     }
 
     *out = '\0';
@@ -249,20 +326,13 @@ void label_selection_str_split(
         cut = label_selection->next;
     }
 
-    label_symbols_t *label_symbols = label_selection->label_symbols;
     for (int i = 0; i < cut; i++) {
-        prefix = stpcpy(
-            prefix,
-            label_symbols_idx_to_ptr(label_symbols, label_selection->input[i])
-        );
+        prefix = label_selection_stpcpy_idx(prefix, label_selection, i);
     }
     *prefix = '\0';
 
     for (int i = cut; i < label_selection->next; i++) {
-        suffix = stpcpy(
-            suffix,
-            label_symbols_idx_to_ptr(label_symbols, label_selection->input[i])
-        );
+        suffix = label_selection_stpcpy_idx(suffix, label_selection, i);
     }
     *suffix = '\0';
 }

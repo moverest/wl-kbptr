@@ -4,16 +4,19 @@
 #include <stdbool.h>
 
 typedef struct {
-    /*         data             data[num_symbols]
-     *         |                |
-     *  | 4 || 0 | 2 | 4 | 6 ||`a`| 0 |`b`| 0 |`c`| 0 |`d`| 0 |
-     *    ^    ^-----------^    ^---------------------------^
-     *    |       offsets               strings
-     *    |
+    /*               symbols          symbols[num_symbols]
+     *               |                |
+     *  | 4 ||xxxx|| 0 | 2 | 4 | 6 ||`a`| 0 |`b`| 0 |`c`| 0 |`d`| 0 |
+     *    ^   ^      ^-----------^    ^---------------------------^
+     *    |   |         offsets               strings
+     *    |   pointer to key data
      *  number of symbols
+     *
+     * The keys field's data is identical in structure to the symbols field.
      */
     unsigned char num_symbols;
-    char          data[];
+    char         *keys;
+    char          symbols[];
 } label_symbols_t;
 
 typedef struct {
@@ -27,17 +30,22 @@ typedef struct {
 // Create a `label_symbols_t` from a string of characters.
 // Returns `NULL` upon error.
 label_symbols_t *label_symbols_from_str(char *s);
+// Create a `label_symbols_t` from a string of label characters and a
+// possibly-empty string of key characters.
+// Returns `NULL` upon error.
+label_symbols_t *label_symbols_from_strs(char *symbols, char *keys);
+
 
 // Free memory of a `label_symbols_t`.
 void label_symbols_free(label_symbols_t *ls);
 
-// Get pointer to string of the symbol at given index.
+// Get pointer to string of the key at given index.
 // Returns value <0 upon error.
-char *label_symbols_idx_to_ptr(label_symbols_t *label_symbols, int idx);
+char *label_symbols_idx_to_key_ptr(label_symbols_t *label_symbols, int idx);
 
-// Find symbol index from given string.
+// Find key index from given string.
 // Returns value <0 upon error.
-int label_symbols_find_idx(label_symbols_t *label_symbols, char *s);
+int label_symbols_find_key_idx(label_symbols_t *label_symbols, char *s);
 
 // Create a `label_selection_t`.
 label_selection_t *
