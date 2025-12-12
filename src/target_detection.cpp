@@ -83,15 +83,46 @@ static pixman_image_t *make_pixman_image_a8r8g8b8(
         width, height, stride
     );
 
+    int bpp = PIXMAN_FORMAT_BPP(pixman_format) / 8;
+    int stride_in_uint32 = stride / sizeof(uint32_t);
+    
+    if (stride % sizeof(uint32_t) != 0 || bpp != 4) {
+        pixman_image_t *out_image = pixman_image_create_bits(
+            PIXMAN_a8r8g8b8, width, height, NULL, width
+        );
+        
+        if (out_image == NULL) {
+            LOG_ERR("Failed to create output pixman image.");
+            return NULL;
+        }
+        
+        uint32_t *dest = (uint32_t*)pixman_image_get_data(out_image);
+        
+        for (uint32_t y = 0; y < height; y++) {
+            uint8_t *src_row = (uint8_t*)data + y * stride;
+            for (uint32_t x = 0; x < width; x++) {
+                uint8_t *pixel = src_row + x * bpp;
+                if (bpp == 3) {
+                    dest[y * width + x] = 0xFF000000 | (pixel[2] << 16) | (pixel[1] << 8) | pixel[0];
+                } else {
+                    dest[y * width + x] = ((uint32_t*)pixel)[0];
+                }
+            }
+        }
+        
+        return out_image;
+    }
+    
     pixman_image_t *in_image = pixman_image_create_bits(
-        pixman_format, width, height, (uint32_t *)data, stride
+        pixman_format, width, height, (uint32_t *)data, stride_in_uint32
     );
+    
     if (in_image == NULL) {
         LOG_ERR("Failed to create pixman image.");
         return NULL;
     }
 
-    int out_stride = width * sizeof(uint32_t);
+    int out_stride = width;
     LOG_DEBUG(
         "Creating `pixman_image_t` for ouput image (w: %d, h: %d, stride: %d).",
         width, height, out_stride
@@ -102,6 +133,7 @@ static pixman_image_t *make_pixman_image_a8r8g8b8(
     );
     if (out_image == NULL) {
         LOG_ERR("Failed to create (out) pixman image.");
+        pixman_image_unref(in_image);
         return NULL;
     }
 
