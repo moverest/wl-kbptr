@@ -73,8 +73,8 @@ void tile_mode_reenter(struct state *state, void *mode_state) {
 
 static struct rect
 idx_to_rect(struct tile_mode_state *mode_state, int idx, int x_off, int y_off) {
-    int column = idx / mode_state->sub_area_rows;
-    int row    = idx % mode_state->sub_area_rows;
+    int row = idx / mode_state->sub_area_columns;
+    int column = idx % mode_state->sub_area_columns;
 
     return (struct rect){
         .x = column * mode_state->sub_area_width +
@@ -152,8 +152,8 @@ void tile_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     char label_selected_str[label_str_max_len];
     char label_unselected_str[label_str_max_len];
 
-    for (int i = 0; i < ms->sub_area_columns; i++) {
-        for (int j = 0; j < ms->sub_area_rows; j++) {
+    for (int j = 0; j < ms->sub_area_rows; j++) {
+        for (int i = 0; i < ms->sub_area_columns; i++) {
             const int x =
                 i * ms->sub_area_width + min(i, ms->sub_area_width_off);
             const int w =
