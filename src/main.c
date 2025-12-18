@@ -623,6 +623,9 @@ static void print_result(struct state *state) {
         break;
     case CLICK_NONE:
         click = 'n';
+        break;
+    default:
+        click = 'n';  // Default to 'none' for any unexpected values
     }
 
     printf(
