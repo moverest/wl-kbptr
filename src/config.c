@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 /**
  * `field_color_parse` parses color field values, e.g.:
@@ -296,6 +297,26 @@ static int parse_click(void *dest, char *value) {
     return 0;
 }
 
+static int parse_bool(void *dest, char *value) {
+    bool *b = dest;
+
+    if (strcasecmp(value, "true") == 0 || strcmp(value, "1") == 0 ||
+        strcasecmp(value, "yes") == 0 || strcasecmp(value, "on") == 0) {
+        *b = true;
+    } else if (strcasecmp(value, "false") == 0 || strcmp(value, "0") == 0 ||
+               strcasecmp(value, "no") == 0 || strcasecmp(value, "off") == 0) {
+        *b = false;
+    } else {
+        LOG_ERR(
+            "Invalid boolean value '%s'. Use 'true'/'false', 'yes'/'no', '1'/'0', or 'on'/'off'.",
+            value
+        );
+        return 1;
+    }
+
+    return 0;
+}
+
 static void free_home_row_keys(void *field_value) {
     char ***home_row_keys_ptr = field_value;
     if (*home_row_keys_ptr == NULL) {
@@ -372,7 +393,8 @@ static struct section_def section_defs[] = {
         MT_FIELD(label_font_size, "8 50% 100", parse_relative_font_size, noop),
         MT_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str
-        )
+        ),
+        MT_FIELD(prefix_adjacency, "false", parse_bool, noop)
     ),
     SECTION(
         mode_floating,
