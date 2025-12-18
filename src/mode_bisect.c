@@ -191,33 +191,101 @@ static void division_4_or_8_render(
             );
         }
 
-        cairo_text_extents_t te;
-        cairo_text_extents(cairo, label, &te);
-        cairo_move_to(
-            cairo, area->x + (int)(area->w / 2) - (int)(te.width / 2),
-            area->y - config->label_padding
-        );
-        cairo_show_text(cairo, label);
+        // Store top label dimensions
+        cairo_text_extents_t te_top;
+        cairo_text_extents(cairo, label, &te_top);
 
         // Bottom label
+        char bottom_label[64];
         if (divide_8) {
             snprintf(
-                label, sizeof(label), "%s %s %s %s", state->home_row[4],
+                bottom_label, sizeof(bottom_label), "%s %s %s %s", state->home_row[4],
                 state->home_row[5], state->home_row[6], state->home_row[7]
             );
         } else {
             snprintf(
-                label, sizeof(label), "%s %s", state->home_row[2],
+                bottom_label, sizeof(bottom_label), "%s %s", state->home_row[2],
                 state->home_row[3]
             );
         }
 
-        cairo_text_extents(cairo, label, &te);
-        cairo_move_to(
-            cairo, area->x + (int)(area->w / 2) - (int)(te.width / 2),
-            area->y + area->h + te.height + config->label_padding
-        );
-        cairo_show_text(cairo, label);
+        // Store bottom label dimensions
+        cairo_text_extents_t te_bottom;
+        cairo_text_extents(cairo, bottom_label, &te_bottom);
+
+        // Check if we're near screen edges
+        int padding = config->label_padding;
+        bool near_top = area->y < te_top.height + 2 * padding;
+        bool near_bottom = area->y + area->h + te_bottom.height + 2 * padding > state->surface_height;
+        bool near_left = area->x < te_top.width + 2 * padding;
+        bool near_right = area->x + area->w + te_bottom.width + 2 * padding > state->current_output->width;
+
+        if (near_top && !near_bottom) {
+            // Both labels below the area
+            cairo_move_to(
+                cairo, area->x + (int)(area->w / 2) - (int)(te_top.width / 2),
+                area->y + area->h + padding + te_top.height
+            );
+            cairo_show_text(cairo, label);
+
+            cairo_move_to(
+                cairo, area->x + (int)(area->w / 2) - (int)(te_bottom.width / 2),
+                area->y + area->h + te_top.height + padding * 2 + te_bottom.height
+            );
+            cairo_show_text(cairo, bottom_label);
+        } else if (!near_top && near_bottom) {
+            // Both labels above the area
+            cairo_move_to(
+                cairo, area->x + (int)(area->w / 2) - (int)(te_bottom.width / 2),
+                area->y - padding
+            );
+            cairo_show_text(cairo, bottom_label);
+
+            cairo_move_to(
+                cairo, area->x + (int)(area->w / 2) - (int)(te_top.width / 2),
+                area->y - padding - te_bottom.height - padding
+            );
+            cairo_show_text(cairo, label);
+        } else if (near_left && !near_right) {
+            // Area is near left edge, position labels to the right
+            cairo_move_to(
+                cairo, area->x + area->w + padding,
+                area->y - padding
+            );
+            cairo_show_text(cairo, label);
+
+            cairo_move_to(
+                cairo, area->x + area->w + padding,
+                area->y + padding + te_top.height
+            );
+            cairo_show_text(cairo, bottom_label);
+        } else if (!near_left && near_right) {
+            // Area is near right edge, position labels to the left
+            cairo_move_to(
+                cairo, area->x - padding - te_top.width,
+                area->y - padding
+            );
+            cairo_show_text(cairo, label);
+
+            cairo_move_to(
+                cairo, area->x - padding - te_bottom.width,
+                area->y + padding + te_top.height
+            );
+            cairo_show_text(cairo, bottom_label);
+        } else {
+            // Standard positioning - top label above, bottom label below
+            cairo_move_to(
+                cairo, area->x + (int)(area->w / 2) - (int)(te_top.width / 2),
+                area->y - padding
+            );
+            cairo_show_text(cairo, label);
+
+            cairo_move_to(
+                cairo, area->x + (int)(area->w / 2) - (int)(te_bottom.width / 2),
+                area->y + area->h + te_bottom.height + padding
+            );
+            cairo_show_text(cairo, bottom_label);
+        }
     }
 }
 
