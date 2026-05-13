@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #ifndef __TARGET_DETECTION_INCLUDED__
 #define __TARGET_DETECTION_INCLUDED__
 

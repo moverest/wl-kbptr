@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #include "utils_cairo.h"
 
 #include <cairo.h>

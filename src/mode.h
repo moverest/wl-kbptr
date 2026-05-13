@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #ifndef __MODE_H_INCLUDED__
 #define __MODE_H_INCLUDED__
 

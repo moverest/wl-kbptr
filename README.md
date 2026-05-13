@@ -234,4 +234,6 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
 
 ## License
 
-[GPL-3.0](./LICENSE)
+[GPL-3.0-only](./LICENSE)
+
+The sources also include Wayland protocol files under the [NTP license](./LICENSE-NTP).

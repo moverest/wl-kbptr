@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #ifndef __SURFACE_BUFFER_H_INCLUDED__
 #define __SURFACE_BUFFER_H_INCLUDED__
 

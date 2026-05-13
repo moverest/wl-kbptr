@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #include "config.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "log.h"

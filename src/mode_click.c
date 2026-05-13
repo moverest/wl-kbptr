@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #include "mode.h"
 
 static void *click_mode_enter(struct state *state, struct rect area) {

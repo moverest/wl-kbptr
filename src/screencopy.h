@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #ifndef __SCREENCOPY_H_INCLUDED__
 #define __SCREENCOPY_H_INCLUDED__
 

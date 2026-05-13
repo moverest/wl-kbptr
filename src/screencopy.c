@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
 #if OPENCV_ENABLED
 
 #include "screencopy.h"
