@@ -15,6 +15,7 @@
 
 #include <cairo/cairo.h>
 #include <getopt.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -25,19 +26,18 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 
-static void send_frame(struct state *state) {
-    int32_t scale_120 = state->fractional_scale;
+static void send_frame_for_overlay(struct overlay_surface *overlay) {
+    struct state *state = overlay->state;
+
+    int32_t scale_120 = overlay->fractional_scale_val;
     if (scale_120 == 0) {
-        // Falling back to the output scale if fractional scale is not received.
-        scale_120 =
-            (state->current_output == NULL ? 1 : state->current_output->scale) *
-            120;
+        // Fall back to the output's integer scale if fractional scale not yet received.
+        scale_120 = (overlay->output == NULL ? 1 : overlay->output->scale) * 120;
     }
 
     struct surface_buffer *surface_buffer = get_next_buffer(
-        state->wl_shm, &state->surface_buffer_pool,
-        state->surface_width * scale_120 / 120,
-        state->surface_height * scale_120 / 120
+        state->wl_shm, &overlay->surface_buffer_pool,
+        overlay->width * scale_120 / 120, overlay->height * scale_120 / 120
     );
     if (surface_buffer == NULL) {
         return;
@@ -47,29 +47,31 @@ static void send_frame(struct state *state) {
     cairo_t *cairo = surface_buffer->cairo;
     cairo_identity_matrix(cairo);
     cairo_scale(cairo, scale_120 / 120.0, scale_120 / 120.0);
+
+    // In all-outputs mode, translate so global coordinates rendered by the mode
+    // map to this output's local surface coordinates.
+    if (state->config.general.all_outputs && overlay->output != NULL) {
+        cairo_translate(cairo, -overlay->output->x, -overlay->output->y);
+    }
+
     mode_render(state, cairo);
 
-    wl_surface_set_buffer_scale(state->wl_surface, 1);
-
-    wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
-    wp_viewport_set_destination(
-        state->wp_viewport, state->surface_width, state->surface_height
-    );
-    wl_surface_damage(
-        state->wl_surface, 0, 0, state->surface_width, state->surface_height
-    );
-    wl_surface_commit(state->wl_surface);
+    wl_surface_set_buffer_scale(overlay->wl_surface, 1);
+    wl_surface_attach(overlay->wl_surface, surface_buffer->wl_buffer, 0, 0);
+    wp_viewport_set_destination(overlay->wp_viewport, overlay->width, overlay->height);
+    wl_surface_damage(overlay->wl_surface, 0, 0, overlay->width, overlay->height);
+    wl_surface_commit(overlay->wl_surface);
 }
 
 /**
- * Send a 1x1px transparent surface.
- *
- * This is used so that the surface is shown on the screen which triggers the
- * `surface.enter()` event callback.
+ * Send a 1x1px transparent surface to trigger the `surface.enter()` event.
+ * Only needed for single-output mode when the output is not yet known.
  */
-static void send_transparent_frame(struct state *state) {
+static void send_transparent_frame_to_overlay(struct overlay_surface *overlay) {
+    struct state *state = overlay->state;
+
     struct surface_buffer *surface_buffer =
-        get_next_buffer(state->wl_shm, &state->surface_buffer_pool, 1, 1);
+        get_next_buffer(state->wl_shm, &overlay->surface_buffer_pool, 1, 1);
     if (surface_buffer == NULL) {
         return;
     }
@@ -78,22 +80,20 @@ static void send_transparent_frame(struct state *state) {
     cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(cairo, 0, 0, 0, 0);
     cairo_fill(cairo);
-    wl_surface_attach(state->wl_surface, surface_buffer->wl_buffer, 0, 0);
-    wp_viewport_set_destination(
-        state->wp_viewport, state->surface_width, state->surface_height
-    );
-    wl_surface_damage(state->wl_surface, 0, 0, 1, 1);
-    wl_surface_commit(state->wl_surface);
+    wl_surface_attach(overlay->wl_surface, surface_buffer->wl_buffer, 0, 0);
+    wp_viewport_set_destination(overlay->wp_viewport, overlay->width, overlay->height);
+    wl_surface_damage(overlay->wl_surface, 0, 0, 1, 1);
+    wl_surface_commit(overlay->wl_surface);
 }
 
 static void surface_callback_done(
     void *data, struct wl_callback *callback, uint32_t callback_data
 ) {
-    struct state *state = data;
-    send_frame(state);
+    struct overlay_surface *overlay = data;
+    send_frame_for_overlay(overlay);
 
-    wl_callback_destroy(state->wl_surface_callback);
-    state->wl_surface_callback = NULL;
+    wl_callback_destroy(overlay->wl_surface_callback);
+    overlay->wl_surface_callback = NULL;
 }
 
 const struct wl_callback_listener surface_callback_listener = {
@@ -101,23 +101,49 @@ const struct wl_callback_listener surface_callback_listener = {
 };
 
 static void request_frame(struct state *state) {
-    if (state->wl_surface_callback != NULL) {
-        return;
+    struct overlay_surface *overlay;
+    wl_list_for_each (overlay, &state->overlay_surfaces, link) {
+        if (overlay->wl_surface_callback != NULL || !overlay->configured) {
+            continue;
+        }
+        overlay->wl_surface_callback = wl_surface_frame(overlay->wl_surface);
+        wl_callback_add_listener(
+            overlay->wl_surface_callback, &surface_callback_listener, overlay
+        );
+        wl_surface_commit(overlay->wl_surface);
     }
-
-    state->wl_surface_callback = wl_surface_frame(state->wl_surface);
-    wl_callback_add_listener(
-        state->wl_surface_callback, &surface_callback_listener, state
-    );
-    wl_surface_commit(state->wl_surface);
 }
 
 bool compute_initial_area(struct state *state, struct rect *initial_area) {
+    if (state->config.general.all_outputs) {
+        // Compute the bounding box of all outputs in global coordinates.
+        int32_t min_x = INT32_MAX, min_y = INT32_MAX;
+        int32_t max_x = INT32_MIN, max_y = INT32_MIN;
+        struct overlay_surface *overlay;
+        wl_list_for_each (overlay, &state->overlay_surfaces, link) {
+            struct output *o = overlay->output;
+            if (o == NULL) continue;
+            if (o->x < min_x) min_x = o->x;
+            if (o->y < min_y) min_y = o->y;
+            if (o->x + o->width > max_x) max_x = o->x + o->width;
+            if (o->y + o->height > max_y) max_y = o->y + o->height;
+        }
+        initial_area->x = min_x;
+        initial_area->y = min_y;
+        initial_area->w = max_x - min_x;
+        initial_area->h = max_y - min_y;
+        return true;
+    }
+
+    // Single-output path: get dimensions from the one overlay surface.
+    struct overlay_surface *overlay =
+        wl_container_of(state->overlay_surfaces.next, overlay, link);
+
     if (initial_area->w == -1) {
         initial_area->x = 0;
         initial_area->y = 0;
-        initial_area->w = state->surface_width;
-        initial_area->h = state->surface_height;
+        initial_area->w = overlay->width;
+        initial_area->h = overlay->height;
     } else {
         if (initial_area->x < 0) {
             initial_area->w += initial_area->x;
@@ -420,28 +446,42 @@ static void load_xdg_outputs(struct state *state) {
 }
 
 static void enter_first_mode(struct state *state) {
-    if (state->current_mode == NO_MODE_ENTERED) {
-        if (!compute_initial_area(state, &state->initial_area)) {
-            state->running = false;
+    if (state->current_mode != NO_MODE_ENTERED) {
+        return;
+    }
+
+    // Wait until every overlay surface is configured and has its output set.
+    struct overlay_surface *overlay;
+    wl_list_for_each (overlay, &state->overlay_surfaces, link) {
+        if (!overlay->configured || overlay->output == NULL) {
             return;
         }
+    }
 
-        LOG_DEBUG(
-            "Initial area: %dx%d+%d+%d", state->initial_area.w,
-            state->initial_area.h, state->initial_area.x, state->initial_area.y
-        );
+    if (!compute_initial_area(state, &state->initial_area)) {
+        state->running = false;
+        return;
+    }
 
+    LOG_DEBUG(
+        "Initial area: %dx%d+%d+%d", state->initial_area.w,
+        state->initial_area.h, state->initial_area.x, state->initial_area.y
+    );
+
+    if (state->current_output != NULL) {
         LOG_DEBUG(
             "Output: %s (position: %dx%d+%d+%d, transform: %d)",
             state->current_output->name, state->current_output->width,
             state->current_output->height, state->current_output->x,
             state->current_output->y, state->current_output->transform
         );
+    }
 
-        enter_next_mode(state, state->initial_area);
+    enter_next_mode(state, state->initial_area);
 
-        if (state->running) {
-            send_frame(state);
+    if (state->running) {
+        wl_list_for_each (overlay, &state->overlay_surfaces, link) {
+            send_frame_for_overlay(overlay);
         }
     }
 }
@@ -449,12 +489,17 @@ static void enter_first_mode(struct state *state) {
 static void handle_surface_enter(
     void *data, struct wl_surface *surface, struct wl_output *wl_output
 ) {
-    struct state  *state = data;
-    struct output *output =
-        find_output_from_wl_output(&state->outputs, wl_output);
-    state->current_output = output;
+    struct overlay_surface *overlay = data;
+    struct state           *state   = overlay->state;
 
-    if (state->surface_configured) {
+    // Only update output if not already known (single-output, no -O/-r flag).
+    if (overlay->output == NULL) {
+        overlay->output =
+            find_output_from_wl_output(&state->outputs, wl_output);
+        state->current_output = overlay->output;
+    }
+
+    if (overlay->configured) {
         enter_first_mode(state);
     }
 }
@@ -544,25 +589,29 @@ static void handle_layer_surface_configure(
     void *data, struct zwlr_layer_surface_v1 *layer_surface, uint32_t serial,
     uint32_t width, uint32_t height
 ) {
-    struct state *state   = data;
-    state->surface_width  = width;
-    state->surface_height = height;
+    struct overlay_surface *overlay = data;
+    struct state           *state   = overlay->state;
+
+    overlay->width  = width;
+    overlay->height = height;
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
 
-    if (state->current_output != NULL) {
-        enter_first_mode(state);
-    } else if (!state->surface_configured) {
-        send_transparent_frame(state);
-    }
+    bool was_configured = overlay->configured;
+    overlay->configured = true;
 
-    state->surface_configured = true;
+    if (overlay->output != NULL) {
+        enter_first_mode(state);
+    } else if (!was_configured) {
+        // Output not yet known; send a transparent frame to get surface.enter.
+        send_transparent_frame_to_overlay(overlay);
+    }
 }
 
 static void handle_layer_surface_closed(
     void *data, struct zwlr_layer_surface_v1 *layer_surface
 ) {
-    struct state *state = data;
-    state->running      = false;
+    struct overlay_surface *overlay = data;
+    overlay->state->running         = false;
 }
 
 const struct zwlr_layer_surface_v1_listener wl_layer_surface_listener = {
@@ -573,12 +622,12 @@ const struct zwlr_layer_surface_v1_listener wl_layer_surface_listener = {
 static void fractional_scale_preferred(
     void *data, struct wp_fractional_scale_v1 *fractional_scale, uint32_t scale
 ) {
-    struct state *state     = data;
-    int32_t       old_scale = state->fractional_scale;
-    state->fractional_scale = scale;
+    struct overlay_surface *overlay   = data;
+    int32_t                 old_scale = overlay->fractional_scale_val;
+    overlay->fractional_scale_val     = scale;
 
     if (old_scale != 0 && old_scale != scale) {
-        request_frame(state);
+        request_frame(overlay->state);
     }
 }
 
@@ -634,6 +683,65 @@ static void print_result(struct state *state) {
     );
 }
 
+/**
+ * In all-outputs mode the result rect is in global coordinates. Find which
+ * output contains the result centre, make `state->current_output` point to it,
+ * and convert the result rect to output-local coordinates so that move_pointer
+ * (which works in output-local space) functions correctly.
+ */
+static void resolve_result_output(struct state *state) {
+    if (!state->config.general.all_outputs) {
+        return;
+    }
+
+    int32_t        cx = state->result.x + state->result.w / 2;
+    int32_t        cy = state->result.y + state->result.h / 2;
+    struct output *output;
+
+    // First try: exact hit.
+    wl_list_for_each (output, &state->outputs, link) {
+        if (cx >= output->x && cx < output->x + output->width &&
+            cy >= output->y && cy < output->y + output->height) {
+            state->current_output  = output;
+            state->result.x       -= output->x;
+            state->result.y       -= output->y;
+            return;
+        }
+    }
+
+    // Result centre is not on any output (e.g. a mode that doesn't yet handle
+    // per-region placement).  Find the nearest output and snap to its edge.
+    struct output *best      = NULL;
+    int32_t        best_dist = INT32_MAX;
+    wl_list_for_each (output, &state->outputs, link) {
+        int32_t dx = cx < output->x                    ? output->x - cx
+                   : cx >= output->x + output->width   ? cx - (output->x + output->width - 1)
+                                                       : 0;
+        int32_t dy = cy < output->y                    ? output->y - cy
+                   : cy >= output->y + output->height  ? cy - (output->y + output->height - 1)
+                                                       : 0;
+        int32_t dist = dx + dy;
+        if (dist < best_dist) {
+            best_dist = dist;
+            best      = output;
+        }
+    }
+
+    if (best == NULL) {
+        best = wl_container_of(state->outputs.next, best, link);
+    }
+
+    // Clamp the result rect so it falls within the chosen output.
+    int32_t snapped_cx = max(best->x, min(cx, best->x + best->width - 1));
+    int32_t snapped_cy = max(best->y, min(cy, best->y + best->height - 1));
+    state->result.x    = snapped_cx - state->result.w / 2;
+    state->result.y    = snapped_cy - state->result.h / 2;
+
+    state->current_output  = best;
+    state->result.x       -= best->x;
+    state->result.y       -= best->y;
+}
+
 static void print_usage() {
     puts("wl-kbptr [OPTION...]\n");
 
@@ -644,6 +752,7 @@ static void print_usage() {
     puts(" -r, --restrict=AREA restrict to given area (wxh+x+y)");
     puts(" -o, --option        set configuration option");
     puts(" -O, --output        specify display output to use");
+    puts(" -A, --all-outputs   show overlay on all outputs simultaneously");
     puts(" -p, --only-print    only print, don't move the cursor or click");
 }
 
@@ -655,24 +764,99 @@ static void print_version() {
     puts("");
 }
 
+/**
+ * Allocate, initialise, and wire up a single overlay_surface for `output`.
+ * If `output` is NULL the compositor will choose (single-output, no -O flag).
+ * `keyboard` controls whether this surface gets exclusive keyboard focus.
+ */
+static struct overlay_surface *create_overlay_surface(
+    struct state *state, struct output *output, bool keyboard
+) {
+    struct overlay_surface *overlay = calloc(1, sizeof(*overlay));
+    overlay->state                  = state;
+    overlay->output                 = output;
+
+    surface_buffer_pool_init(&overlay->surface_buffer_pool);
+
+    overlay->wl_surface = wl_compositor_create_surface(state->wl_compositor);
+    wl_surface_add_listener(overlay->wl_surface, &surface_listener, overlay);
+
+    overlay->wl_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+        state->wl_layer_shell, overlay->wl_surface,
+        output == NULL ? NULL : output->wl_output,
+        ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "selection"
+    );
+    zwlr_layer_surface_v1_add_listener(
+        overlay->wl_layer_surface, &wl_layer_surface_listener, overlay
+    );
+    zwlr_layer_surface_v1_set_exclusive_zone(overlay->wl_layer_surface, -1);
+    zwlr_layer_surface_v1_set_anchor(
+        overlay->wl_layer_surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
+            ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
+    );
+    zwlr_layer_surface_v1_set_keyboard_interactivity(
+        overlay->wl_layer_surface, keyboard
+    );
+
+    if (state->fractional_scale_mgr) {
+        overlay->fractional_scale =
+            wp_fractional_scale_manager_v1_get_fractional_scale(
+                state->fractional_scale_mgr, overlay->wl_surface
+            );
+        wp_fractional_scale_v1_add_listener(
+            overlay->fractional_scale, &fractional_scale_listener, overlay
+        );
+    }
+
+    overlay->wp_viewport =
+        wp_viewporter_get_viewport(state->wp_viewporter, overlay->wl_surface);
+
+    // Empty input region so the overlay doesn't capture pointer events.
+    struct wl_region *region =
+        wl_compositor_create_region(state->wl_compositor);
+    wl_region_add(region, 0, 0, 0, 0);
+    wl_surface_set_input_region(overlay->wl_surface, region);
+    wl_region_destroy(region);
+
+    wl_surface_commit(overlay->wl_surface);
+
+    return overlay;
+}
+
+static void free_overlay_surface(struct overlay_surface *overlay) {
+    if (overlay->fractional_scale) {
+        wp_fractional_scale_v1_destroy(overlay->fractional_scale);
+    }
+    wp_viewport_destroy(overlay->wp_viewport);
+    zwlr_layer_surface_v1_destroy(overlay->wl_layer_surface);
+    wl_surface_destroy(overlay->wl_surface);
+    surface_buffer_pool_destroy(&overlay->surface_buffer_pool);
+    wl_list_remove(&overlay->link);
+    free(overlay);
+}
+
+static void free_overlay_surfaces(struct wl_list *overlay_surfaces) {
+    struct overlay_surface *overlay;
+    struct overlay_surface *tmp;
+    wl_list_for_each_safe (overlay, tmp, overlay_surfaces, link) {
+        free_overlay_surface(overlay);
+    }
+}
+
 int main(int argc, char **argv) {
     struct state state = {
-        .wl_display          = NULL,
-        .wl_registry         = NULL,
-        .wl_compositor       = NULL,
-        .wl_shm              = NULL,
-        .wl_layer_shell      = NULL,
-        .wl_surface          = NULL,
-        .wl_surface_callback = NULL,
-        .wl_layer_surface    = NULL,
-        .surface_configured  = false,
+        .wl_display           = NULL,
+        .wl_registry          = NULL,
+        .wl_compositor        = NULL,
+        .wl_shm               = NULL,
+        .wl_layer_shell       = NULL,
 #if OPENCV_ENABLED
         .wl_screencopy_manager = NULL,
 #endif
         .wp_viewporter        = NULL,
         .fractional_scale_mgr = NULL,
         .running              = true,
-        .fractional_scale     = 0,
         .result               = (struct rect){-1, -1, -1, -1},
         .initial_area         = (struct rect){-1, -1, -1, -1},
         .home_row = (char *[]){"", "", "", "", "", "", "", "", "", "", ""},
@@ -690,6 +874,7 @@ int main(int argc, char **argv) {
         {"restrict", required_argument, 0, 'r'},
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
+        {"all-outputs", no_argument, 0, 'A'},
         {"only-print", no_argument, 0, 'p'},
         {NULL, 0, NULL, 0}
     };
@@ -703,7 +888,7 @@ int main(int argc, char **argv) {
     char  *selected_output_name = NULL;
     bool   only_print           = false;
     while ((option_char = getopt_long(
-                argc, argv, "hvr:o:c:O:Rp", long_options, &option_index
+                argc, argv, "hvr:o:c:O:ARp", long_options, &option_index
             )) != -1) {
         switch (option_char) {
         case 'h':
@@ -749,6 +934,17 @@ int main(int argc, char **argv) {
             selected_output_name = strdup(optarg);
             break;
 
+        case 'A':
+            // Push as a cli_config so it is applied after the config file,
+            // giving the CLI flag precedence over any file setting.
+            if (num_cli_configs >= cli_configs_len) {
+                cli_configs_len += 10;
+                cli_configs =
+                    realloc(cli_configs, cli_configs_len * sizeof(char *));
+            }
+            cli_configs[num_cli_configs++] = "all_outputs=true";
+            break;
+
         case 'p':
             only_print = true;
             break;
@@ -778,6 +974,16 @@ int main(int argc, char **argv) {
     free(cli_configs);
     cli_configs = NULL;
 
+    if (state.config.general.all_outputs && selected_output_name != NULL) {
+        LOG_ERR("--all-outputs and --output are mutually exclusive.");
+        return 1;
+    }
+
+    if (state.config.general.all_outputs && state.initial_area.w != -1) {
+        LOG_ERR("--all-outputs and --restrict are mutually exclusive.");
+        return 1;
+    }
+
     if (state.config.general.home_row_keys != NULL) {
         state.home_row = state.config.general.home_row_keys;
     }
@@ -789,6 +995,7 @@ int main(int argc, char **argv) {
 
     wl_list_init(&state.outputs);
     wl_list_init(&state.seats);
+    wl_list_init(&state.overlay_surfaces);
 
     state.wl_display = wl_display_connect(NULL);
     if (state.wl_display == NULL) {
@@ -841,85 +1048,55 @@ int main(int argc, char **argv) {
     // home row keys.
     wl_display_roundtrip(state.wl_display);
 
-    if (selected_output_name) {
-        state.current_output =
-            find_output_by_name(&state, selected_output_name);
-
-        if (!state.current_output) {
-            LOG_ERR("Could not find output '%s'.", selected_output_name);
-            return 1;
+    if (state.config.general.all_outputs) {
+        // Create one overlay surface per output. Only the first gets keyboard
+        // interactivity; the compositor routes all keys there via exclusive grab.
+        bool           first = true;
+        struct output *output;
+        wl_list_for_each (output, &state.outputs, link) {
+            struct overlay_surface *overlay =
+                create_overlay_surface(&state, output, first);
+            wl_list_insert(state.overlay_surfaces.prev, &overlay->link);
+            first = false;
+        }
+    } else {
+        // Single-output mode: resolve the target output from -O / -r flags.
+        if (selected_output_name) {
+            state.current_output =
+                find_output_by_name(&state, selected_output_name);
+            if (!state.current_output) {
+                LOG_ERR("Could not find output '%s'.", selected_output_name);
+                return 1;
+            }
+            free(selected_output_name);
+            selected_output_name = NULL;
+        } else if (state.initial_area.w != -1) {
+            state.current_output =
+                find_output_from_rect(&state, &state.initial_area);
+            if (!state.current_output) {
+                LOG_ERR("Could not find output containing given area.");
+                return 1;
+            }
+            state.initial_area.x -= state.current_output->x;
+            state.initial_area.y -= state.current_output->y;
         }
 
-        free(selected_output_name);
-        selected_output_name = NULL;
-    } else if (state.initial_area.w != -1) {
-        state.current_output =
-            find_output_from_rect(&state, &state.initial_area);
-
-        if (!state.current_output) {
-            LOG_ERR("Could not find output containing given area.");
-            return 1;
-        }
-
-        state.initial_area.x -= state.current_output->x;
-        state.initial_area.y -= state.current_output->y;
+        struct overlay_surface *overlay =
+            create_overlay_surface(&state, state.current_output, true);
+        wl_list_insert(&state.overlay_surfaces, &overlay->link);
     }
 
-    surface_buffer_pool_init(&state.surface_buffer_pool);
-
-    state.wl_surface = wl_compositor_create_surface(state.wl_compositor);
-    wl_surface_add_listener(state.wl_surface, &surface_listener, &state);
-    state.wl_layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        state.wl_layer_shell, state.wl_surface,
-        state.current_output == NULL ? NULL : state.current_output->wl_output,
-        ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "selection"
-    );
-    zwlr_layer_surface_v1_add_listener(
-        state.wl_layer_surface, &wl_layer_surface_listener, &state
-    );
-    zwlr_layer_surface_v1_set_exclusive_zone(state.wl_layer_surface, -1);
-    zwlr_layer_surface_v1_set_anchor(
-        state.wl_layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
-                                    ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
-                                    ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
-                                    ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
-    );
-    zwlr_layer_surface_v1_set_keyboard_interactivity(
-        state.wl_layer_surface, true
-    );
-
-    struct wp_fractional_scale_v1 *fractional_scale = NULL;
-    if (state.fractional_scale_mgr) {
-        fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(
-            state.fractional_scale_mgr, state.wl_surface
-        );
-        wp_fractional_scale_v1_add_listener(
-            fractional_scale, &fractional_scale_listener, &state
-        );
-    }
-
-    state.wp_viewport =
-        wp_viewporter_get_viewport(state.wp_viewporter, state.wl_surface);
-
-    struct wl_region *wl_region =
-        wl_compositor_create_region(state.wl_compositor);
-    wl_region_add(wl_region, 0, 0, 0, 0);
-    wl_surface_set_input_region(state.wl_surface, wl_region);
-
-    wl_surface_commit(state.wl_surface);
     while (state.running && wl_display_dispatch(state.wl_display)) {}
 
-    wp_viewport_destroy(state.wp_viewport);
+    wl_display_roundtrip(state.wl_display);
 
-    zwlr_layer_surface_v1_destroy(state.wl_layer_surface);
-    wl_surface_destroy(state.wl_surface);
-    wl_region_destroy(wl_region);
+    free_overlay_surfaces(&state.overlay_surfaces);
 
-    surface_buffer_pool_destroy(&state.surface_buffer_pool);
     wl_display_roundtrip(state.wl_display);
 
     int status_code = 0;
     if (state.result.x != -1) {
+        resolve_result_output(&state);
         print_result(&state);
         if (!only_print) {
             move_pointer(
@@ -941,7 +1118,6 @@ int main(int argc, char **argv) {
     zxdg_output_manager_v1_destroy(state.xdg_output_manager);
 
     if (state.fractional_scale_mgr) {
-        wp_fractional_scale_v1_destroy(fractional_scale);
         wp_fractional_scale_manager_v1_destroy(state.fractional_scale_mgr);
     }
 

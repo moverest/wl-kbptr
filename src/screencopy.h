@@ -18,7 +18,9 @@ struct scrcpy_buffer {
 
 struct state;
 struct rect;
-struct scrcpy_buffer *query_screenshot(struct state *state, struct rect region);
+struct scrcpy_buffer *query_screenshot(
+    struct state *state, struct wl_output *wl_output, struct rect region
+);
 
 void destroy_scrcpy_buffer(struct scrcpy_buffer *buf);
 

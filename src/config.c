@@ -87,6 +87,21 @@ static int parse_double(void *dest, char *value) {
     return 0;
 }
 
+static int parse_bool(void *dest, char *value) {
+    bool *out = dest;
+    if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0) {
+        *out = true;
+    } else if (strcmp(value, "false") == 0 || strcmp(value, "0") == 0) {
+        *out = false;
+    } else {
+        LOG_ERR(
+            "Invalid boolean value '%s'. Should be 'true' or 'false'.", value
+        );
+        return 1;
+    }
+    return 0;
+}
+
 static int parse_uint8(void *dest, char *value) {
     int decoded = atoi(value);
     if (decoded < 0 || decoded >= 256) {
@@ -362,7 +377,8 @@ static struct section_def section_defs[] = {
         general,
         G_FIELD(home_row_keys, "", parse_home_row_keys, free_home_row_keys),
         G_FIELD(modes, "tile,bisect", parse_str, free_str),
-        G_FIELD(cancellation_status_code, "0", parse_uint8, noop)
+        G_FIELD(cancellation_status_code, "0", parse_uint8, noop),
+        G_FIELD(all_outputs, "false", parse_bool, noop)
     ),
     SECTION(
         mode_tile, MT_FIELD(label_color, "#fffd", parse_color, noop),

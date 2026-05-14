@@ -7,6 +7,9 @@
 home_row_keys=
 modes=tile,bisect
 cancellation_status_code=0
+# Span the overlay across all connected outputs simultaneously (tile and floating modes).
+# Equivalent to the -A / --all-outputs command-line flag.
+all_outputs=false
 
 [mode_tile]
 label_color=#fffd

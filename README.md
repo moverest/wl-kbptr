@@ -216,6 +216,45 @@ submap = reset
 bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword cursor:hide_on_key_press false; hyprctl dispatch submap cursor
 ```
 
+## Multi-monitor support
+
+By default, `wl-kbptr` shows its overlay only on the currently focused output. The `--all-outputs` / `-A` flag spans the overlay across all connected outputs simultaneously, so you don't need to focus the right display before invoking it.
+
+> **Note:** Multi-monitor mode is implemented for **tile mode** and **floating mode**. For floating mode with `mode_floating.source=detect`, targets are detected on each output independently and combined. For floating mode with stdin input, pass areas in global coordinates.
+
+### Usage
+
+```bash
+wl-kbptr -A -o modes=tile,click
+```
+
+Or enable it permanently in your configuration file:
+
+```ini
+[general]
+all_outputs=true
+```
+
+### How it works
+
+- One overlay surface is created per output, each covering its respective monitor.
+- The first surface gets exclusive keyboard focus; the compositor routes all key events there regardless of which monitor the cursor is on.
+- Each monitor is assigned its **exclusive pixels** — its full logical bounds minus any area that overlaps with a previously processed monitor. Labels are indexed continuously across all resulting regions.
+- After you type a label, the cursor moves to the correct output automatically.
+
+This exclusive-region approach handles arbitrary overlap topologies correctly:
+
+| Layout | Behaviour |
+| ------ | --------- |
+| Side-by-side / stacked (no overlap) | One region per monitor, as expected. |
+| Corner overlap | The first monitor keeps its full area; the second monitor's exclusive area is 2 strips (the non-overlapping edges). The shared corner belongs to the first monitor. |
+| Landscape + portrait overlap | The first-listed monitor keeps its full area. If landscape is first, the portrait monitor covers only the strip extending beyond the landscape area. If portrait is first, landscape gets left/right columns beside the portrait. |
+| Full mirror (same logical position) | The second monitor has no exclusive area and receives no labels. Its overlay surface shows only the background tint. |
+
+### Cell density
+
+Cell size is computed from the **average logical monitor area**, keeping density consistent with single-output mode — each monitor gets roughly the same number of cells as it would on its own. With multiple monitors the total label count scales with the number of outputs, so labels may require more keystrokes (e.g. 3 characters with 3 monitors).
+
 ## Configuration
 
 `wl-kbptr` can be configured with a configuration file. See [`config.example`](./config.example) for an example and run `wl-kbptr --help-config` for help.
