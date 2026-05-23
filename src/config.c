@@ -416,39 +416,41 @@ static struct section_def section_defs[] = {
         "Configuration for floating mode",
         MF_FIELD(
             source, "stdin", parse_floating_mode_source_value, noop,
-            "Source"
+            "Source of selectable regions. Possible values:\n"
+            "* `detect` -- auto-detect regions with OpenCV\n"
+            "* `stdin` -- read region definitions from stdin"
         ),
         MF_FIELD(
             label_color, "#fffd", parse_color, noop,
-            "Color of labels"
+            "Label color for selectable regions"
         ),
         MF_FIELD(
             label_select_color, "#fd0d", parse_color, noop,
-            "Selected label color"
+            "Label color for selected regions"
         ),
         MF_FIELD(
             unselectable_bg_color, "#2226", parse_color, noop,
-            "Background color of unselectable"
+            "Background color for unselectable regions"
         ),
         MF_FIELD(
             selectable_bg_color, "#1718", parse_color, noop,
-            "Background color of selectable"
+            "Background color for selectable regions"
         ),
         MF_FIELD(
             selectable_border_color, "#040c", parse_color, noop,
-            "Border color of selectable"
+            "Border color for selectable regions"
         ),
         MF_FIELD(
             label_font_family, "sans-serif", parse_str, free_str,
-            "Font family for label"
+            "Font family for labels"
         ),
         MF_FIELD(
             label_font_size, "12 50% 100", parse_relative_font_size, noop,
-            "Font size for label"
+            "Font size for labels"
         ),
         MF_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str,
-            "Symbols to use for labels"
+            "Characters to use in labels"
         )
     ),
     SECTION(
