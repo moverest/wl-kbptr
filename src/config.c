@@ -505,7 +505,7 @@ static struct section_def section_defs[] = {
         ),
         MB_FIELD(
             history_border_color, "#3339", parse_color, noop,
-            "Border color for previously selected regions"
+            "Border color for selection hisory"
         )
     ),
     SECTION(
@@ -520,24 +520,26 @@ static struct section_def section_defs[] = {
             "Pointer color"
         ),
         MS_FIELD(
+            // TODO[glowingscrewdriver] why is this not named
+            // `unselectable_bg_color`?
             bg_color, "#2226", parse_color, noop,
-            "Background color"
+            "Background color for unselectable area"
         ),
         MS_FIELD(
             area_bg_color, "#11111188", parse_color, noop,
-            "Background color for area"
+            "Background color for selectable area"
         ),
         MS_FIELD(
             vertical_color, "#8888ffcc", parse_color, noop,
-            "Color for vertical marker"
+            "Color for vertical split marker"
         ),
         MS_FIELD(
             horizontal_color, "#008800cc", parse_color, noop,
-            "Color for horizontal marker"
+            "Color for horizontal split marker"
         ),
         MS_FIELD(
             history_border_color, "#3339", parse_color, noop,
-            "Border color for history"
+            "Border color for selection history"
         )
     ),
     SECTION(
@@ -545,7 +547,7 @@ static struct section_def section_defs[] = {
         "Configuration for click mode",
         MC_FIELD(
             button, "left", parse_click, noop,
-            "Mouse button"
+            "Mouse button to trigger"
         )
     ),
 };
