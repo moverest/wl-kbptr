@@ -368,7 +368,7 @@ static struct section_def section_defs[] = {
         ),
         G_FIELD(
             modes, "tile,bisect", parse_str, free_str,
-            "Modes to use"
+            "Modes to use; will be chained"
         ),
         G_FIELD(
             cancellation_status_code, "0", parse_uint8, noop,
@@ -380,35 +380,35 @@ static struct section_def section_defs[] = {
         "Configuration for tile mode",
         MT_FIELD(
             label_color, "#fffd", parse_color, noop,
-            "Label color"
+            "Label color for selectable regions"
         ),
         MT_FIELD(
             label_select_color, "#fd0d", parse_color, noop,
-            "Selected label color"
+            "Label color for selected regions"
         ),
         MT_FIELD(
             unselectable_bg_color, "#2226", parse_color, noop,
-            "Background color for unselectable"
+            "Background color for unselectable regions"
         ),
         MT_FIELD(
             selectable_bg_color, "#0304", parse_color, noop,
-            "Background color for selectable"
+            "Background color for selectable regions"
         ),
         MT_FIELD(
             selectable_border_color, "#040c", parse_color, noop,
-            "Border color for selectable"
+            "Border color for selectable regions"
         ),
         MT_FIELD(
             label_font_family, "sans-serif", parse_str, free_str,
-            "Font family for label"
+            "Font family for labels"
         ),
         MT_FIELD(
             label_font_size, "8 50% 100", parse_relative_font_size, noop,
-            "Font size for label"
+            "Font size for labels"
         ),
         MT_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str,
-            "Symbols to use for labels"
+            "Characters to use in labels"
         )
     ),
     SECTION(
