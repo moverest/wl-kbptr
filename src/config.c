@@ -454,11 +454,12 @@ static struct section_def section_defs[] = {
         )
     ),
     SECTION(
+        // TODO[glowingscewdriver]: Explain "even" and "odd" areas
         mode_bisect,
         "Configuration for bisect mode",
         MB_FIELD(
             label_color, "#fffd", parse_color, noop,
-            "Label color"
+            "Label color for selectable regions"
         ),
         // TODO: we should set minimums for numbers.
         MB_FIELD(
@@ -470,6 +471,7 @@ static struct section_def section_defs[] = {
             "Font family for labels"
         ),
         MB_FIELD(
+            // TODO[glowingscrewdriver]: What does this actually do?
             label_padding, "12", parse_double, noop,
             "Padding for labels"
         ),
@@ -483,27 +485,27 @@ static struct section_def section_defs[] = {
         ),
         MB_FIELD(
             unselectable_bg_color, "#2226", parse_color, noop,
-            "Background color for unselectable"
+            "Background color for unselectable regions"
         ),
         MB_FIELD(
             even_area_bg_color, "#0304", parse_color, noop,
-            "Background color for even area"
+            "Background color for even areas"
         ),
         MB_FIELD(
             even_area_border_color, "#0408", parse_color, noop,
-            "Border color for even area"
+            "Border color for even areas"
         ),
         MB_FIELD(
             odd_area_bg_color, "#0034", parse_color, noop,
-            "Background color for odd area"
+            "Background color for odd areas"
         ),
         MB_FIELD(
             odd_area_border_color, "#0048", parse_color, noop,
-            "Border color for odd area"
+            "Border color for odd areas"
         ),
         MB_FIELD(
             history_border_color, "#3339", parse_color, noop,
-            "Border color for history"
+            "Border color for previously selected regions"
         )
     ),
     SECTION(
