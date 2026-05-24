@@ -562,7 +562,7 @@ void print_default_config() {
     for (int i = 0; i < sizeof(section_defs) / sizeof(section_defs[0]); i++) {
         struct section_def *section_def = &section_defs[i];
 
-        printf("\n[%s]\n## %s ##\n", section_def->name, section_def->desc);
+        printf("\n## %s ##\n[%s]\n", section_def->desc, section_def->name);
 
         for (struct field_def **field_def_ptr = section_def->fields;
              *field_def_ptr != NULL; field_def_ptr++) {
