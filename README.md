@@ -105,18 +105,10 @@ apk add wl-kbptr
 ```
 ### Fedora
 
-As of now there is no official package through dnf. So you will need to install the dependencies and then run the steps described in the **From sources** section.
+If you are using Fedora, you can install the [`wl-kbptr` package](https://src.fedoraproject.org/rpms/wl-kbptr) which is available in the official repository.
 
 ```bash
-sudo dnf install -y \
-    meson \
-    wayland-protocols-devel \
-    gcc \
-    libwayland-client  \
-    cmake \
-    wayland-devel \
-    libxkbcommon-devel \
-    cairo-devel
+dnf in wl-kbptr
 ```
 
 ### From sources
