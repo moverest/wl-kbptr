@@ -8,6 +8,7 @@
 #include "utils_cairo.h"
 
 #include <cairo.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,10 +74,12 @@ void tile_mode_reenter(struct state *state, void *mode_state) {
     tile_mode_back(ms);
 }
 
+
 static struct rect
 idx_to_rect(struct tile_mode_state *mode_state, int idx, int x_off, int y_off) {
-    int column = idx / mode_state->sub_area_rows;
-    int row    = idx % mode_state->sub_area_rows;
+    // Get the grid position based on index
+    int row = idx / mode_state->sub_area_columns;
+    int column = idx % mode_state->sub_area_columns;
 
     return (struct rect){
         .x = column * mode_state->sub_area_width +
@@ -90,10 +93,82 @@ idx_to_rect(struct tile_mode_state *mode_state, int idx, int x_off, int y_off) {
     };
 }
 
+static int *create_indices(struct tile_mode_state *ms, bool adjacent) {
+    const int total_tiles = ms->sub_area_rows * ms->sub_area_columns;
+    int *indices = malloc(total_tiles * sizeof(int));
+
+    // Initialize with sequential indices
+    for (int i = 0; i < total_tiles; i++) {
+        indices[i] = i;
+    }
+
+    // If prefix adjacency is not enabled, just return sequential indices
+    if (!adjacent) {
+        return indices;
+    }
+
+    // For prefix adjacency, sort indices lexicographically by their labels
+    label_selection_t *temp_label = label_selection_new(ms->label_symbols, total_tiles);
+    int label_str_max_len = label_selection_str_max_len(temp_label) + 1;
+    char **label_strs = malloc(total_tiles * sizeof(char *));
+
+    // Generate all label strings
+    for (int i = 0; i < total_tiles; i++) {
+        label_strs[i] = malloc(label_str_max_len);
+        label_selection_set_from_idx(temp_label, i);
+        label_selection_str(temp_label, label_strs[i]);
+    }
+
+    // Simple insertion sort by label string
+    for (int i = 0; i < total_tiles; i++) {
+        for (int j = i + 1; j < total_tiles; j++) {
+            if (strcmp(label_strs[indices[i]], label_strs[indices[j]]) > 0) {
+                int temp = indices[i];
+                indices[i] = indices[j];
+                indices[j] = temp;
+            }
+        }
+    }
+
+    // Clean up
+    for (int i = 0; i < total_tiles; i++) {
+        free(label_strs[i]);
+    }
+    free(label_strs);
+    label_selection_free(temp_label);
+
+    return indices;
+}
+
+// Finds the grid index corresponding to a label selection
+static int find_grid_index(struct tile_mode_state *ms, int label_idx, bool use_adjacency) {
+    // If adjacency isn't enabled, the grid index is the same as the label index
+    if (!use_adjacency) {
+        return label_idx;
+    }
+
+    // Create the ordered indices (same as used in rendering)
+    int *indices = create_indices(ms, true);
+    const int total_tiles = ms->sub_area_rows * ms->sub_area_columns;
+
+    // Search for the position where our label_idx appears in the indices array
+    int grid_idx = -1;
+    for (int i = 0; i < total_tiles; i++) {
+        if (indices[i] == label_idx) {
+            grid_idx = i;
+            break;
+        }
+    }
+
+    free(indices);
+    return grid_idx;
+}
+
 static bool tile_mode_key(
     struct state *state, void *mode_state, xkb_keysym_t keysym, char *text
 ) {
     struct tile_mode_state *ms = mode_state;
+    struct mode_tile_config *config = &state->config.mode_tile;
 
     switch (keysym) {
     case XKB_KEY_BackSpace:
@@ -111,10 +186,14 @@ static bool tile_mode_key(
 
         label_selection_append(ms->label_selection, symbol_idx);
 
-        int idx = label_selection_to_idx(ms->label_selection);
-        if (idx >= 0) {
+        int label_idx = label_selection_to_idx(ms->label_selection);
+        if (label_idx >= 0) {
+            // Convert the label index to the corresponding grid position
+            int grid_idx = find_grid_index(ms, label_idx, config->prefix_adjacency);
+
+            // Use the grid index to determine the rectangle
             enter_next_mode(
-                state, idx_to_rect(ms, idx, ms->area.x, ms->area.y)
+                state, idx_to_rect(ms, grid_idx, ms->area.x, ms->area.y)
             );
         }
         return true;
@@ -145,17 +224,35 @@ void tile_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
     cairo_set_line_width(cairo, 1);
     cairo_stroke(cairo);
 
-    label_selection_t *curr_label = label_selection_new(
-        ms->label_symbols, ms->sub_area_columns * ms->sub_area_rows
-    );
-    label_selection_set_from_idx(curr_label, 0);
+    // Create indices for rendering based on configuration
+    const int total_tiles = ms->sub_area_rows * ms->sub_area_columns;
+    int *indices = create_indices(ms, config->prefix_adjacency);
 
-    int  label_str_max_len = label_selection_str_max_len(curr_label) + 1;
+    // Create a temporary label for rendering
+    label_selection_t *curr_label = label_selection_new(
+        ms->label_symbols, total_tiles
+    );
+
+    int label_str_max_len = label_selection_str_max_len(curr_label) + 1;
     char label_selected_str[label_str_max_len];
     char label_unselected_str[label_str_max_len];
 
-    for (int i = 0; i < ms->sub_area_columns; i++) {
-        for (int j = 0; j < ms->sub_area_rows; j++) {
+    // Render tiles in grid order with the appropriate indices
+    for (int j = 0; j < ms->sub_area_rows; j++) {
+        for (int i = 0; i < ms->sub_area_columns; i++) {
+            const int grid_idx = j * ms->sub_area_columns + i;
+
+            // Skip if we're out of bounds
+            if (grid_idx >= total_tiles) {
+                continue;
+            }
+
+            // Get the index for this grid position
+            const int idx = indices[grid_idx];
+
+            // Set the label for this tile using the appropriate index
+            label_selection_set_from_idx(curr_label, idx);
+
             const int x =
                 i * ms->sub_area_width + min(i, ms->sub_area_width_off);
             const int w =
@@ -204,11 +301,10 @@ void tile_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {
                 cairo_set_source_u32(cairo, config->label_color);
                 cairo_show_text(cairo, label_unselected_str);
             }
-
-            label_selection_incr(curr_label);
         }
     }
 
+    free(indices);
     label_selection_free(curr_label);
     cairo_translate(cairo, -ms->area.x, -ms->area.y);
 }

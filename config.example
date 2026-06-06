@@ -17,6 +17,10 @@ selectable_border_color=#040c
 label_font_family=sans-serif
 label_font_size=8 50% 100
 label_symbols=abcdefghijklmnopqrstuvwxyz
+# Set to 'true' to make labels with common prefixes (like 'a', 'aa', 'ab') adjacent to each other
+# This makes it easier to navigate to related targets, as labels are ordered lexicographically
+# Default: false (original behavior)
+prefix_adjacency=false
 
 [mode_floating]
 source=stdin
