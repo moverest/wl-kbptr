@@ -5,12 +5,14 @@
 
 #include "utils.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 struct general_config {
     char  **home_row_keys;
     char   *modes;
     uint8_t cancellation_status_code;
+    bool    all_outputs;
 };
 
 struct relative_font_size {

@@ -63,7 +63,8 @@ static void get_area_from_screenshot(
     area.h -= 2;
     area.w -= 2;
 
-    struct scrcpy_buffer    *scrcpy_buffer = query_screenshot(state, area);
+    struct scrcpy_buffer    *scrcpy_buffer =
+        query_screenshot(state, state->current_output->wl_output, area);
     enum wl_output_transform output_transform =
         state->current_output->transform;
     ms->num_areas = compute_target_from_img_buffer(
@@ -72,6 +73,55 @@ static void get_area_from_screenshot(
         &ms->areas
     );
     destroy_scrcpy_buffer(scrcpy_buffer);
+}
+
+// Detect targets on all outputs and combine results into global coordinates.
+static void get_areas_from_all_screenshots(
+    struct state *state, struct floating_mode_state *ms
+) {
+    size_t areas_cap = 256;
+    struct rect *all_areas = malloc(sizeof(struct rect) * areas_cap);
+    int total = 0;
+
+    struct overlay_surface *ov;
+    wl_list_for_each (ov, &state->overlay_surfaces, link) {
+        if (ov->output == NULL) continue;
+        struct output *o = ov->output;
+
+        // Capture the full output, excluding a 1px border to avoid window frame
+        // edges interfering with contour detection.
+        struct rect region = {
+            .x = 1, .y = 1, .w = o->width - 2, .h = o->height - 2,
+        };
+
+        struct scrcpy_buffer *buf =
+            query_screenshot(state, o->wl_output, region);
+        if (buf == NULL) continue;
+
+        struct rect *detected = NULL;
+        int n = compute_target_from_img_buffer(
+            buf->data, buf->height, buf->width, buf->stride, buf->format,
+            o->transform, region, &detected
+        );
+        destroy_scrcpy_buffer(buf);
+
+        // Shift output-local coordinates to global coordinates.
+        for (int i = 0; i < n; i++) {
+            if (total >= (int)areas_cap) {
+                areas_cap *= 2;
+                all_areas = realloc(all_areas, sizeof(struct rect) * areas_cap);
+            }
+            all_areas[total].x = detected[i].x + o->x;
+            all_areas[total].y = detected[i].y + o->y;
+            all_areas[total].w = detected[i].w;
+            all_areas[total].h = detected[i].h;
+            total++;
+        }
+        free(detected);
+    }
+
+    ms->areas     = all_areas;
+    ms->num_areas = total;
 }
 
 #endif
@@ -95,7 +145,11 @@ void *floating_mode_enter(struct state *state, struct rect area) {
         break;
     case FLOATING_MODE_SOURCE_DETECT:
 #if OPENCV_ENABLED
-        get_area_from_screenshot(state, ms, area);
+        if (state->config.general.all_outputs) {
+            get_areas_from_all_screenshots(state, ms);
+        } else {
+            get_area_from_screenshot(state, ms, area);
+        }
 #else
         // This should not happen as the value is checked when loading the
         // configuration.

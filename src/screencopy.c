@@ -123,7 +123,7 @@ const struct zwlr_screencopy_frame_v1_listener screencopy_frame_listener = {
 };
 
 struct scrcpy_buffer *
-query_screenshot(struct state *state, struct rect region) {
+query_screenshot(struct state *state, struct wl_output *wl_output, struct rect region) {
     struct scrcpy_state scrcpy_state;
     scrcpy_state.wl_shm = state->wl_shm;
 
@@ -139,8 +139,7 @@ query_screenshot(struct state *state, struct rect region) {
     scrcpy_state.wl_screencopy_frame =
         zwlr_screencopy_manager_v1_capture_output_region(
             state->wl_screencopy_manager, false,
-            state->current_output->wl_output, region.x, region.y, region.w,
-            region.h
+            wl_output, region.x, region.y, region.w, region.h
         );
     zwlr_screencopy_frame_v1_add_listener(
         scrcpy_state.wl_screencopy_frame, &screencopy_frame_listener,
