@@ -298,6 +298,23 @@ static int parse_click(void *dest, char *value) {
     return 0;
 }
 
+static int parse_drag_marker_shape(void *dest, char *value) {
+    enum drag_marker_shape *out = dest;
+    if (strcmp(value, "circle") == 0) {
+        *out = DRAG_MARKER_CIRCLE;
+    } else if (strcmp(value, "caret") == 0) {
+        *out = DRAG_MARKER_CARET;
+    } else {
+        LOG_ERR(
+            "Invalid drag marker shape '%s'. Should be 'circle' or 'caret'.",
+            value
+        );
+        return 1;
+    }
+
+    return 0;
+}
+
 static void free_home_row_keys(void *field_value) {
     char ***home_row_keys_ptr = field_value;
     if (*home_row_keys_ptr == NULL) {
@@ -419,7 +436,9 @@ static struct section_def section_defs[] = {
     SECTION(mode_click, MC_FIELD(button, "left", parse_click, noop)),
     SECTION(
         mode_drag,
-        MD_FIELD(start_marker_color, "#f50d", parse_color, noop)
+        MD_FIELD(start_marker_color, "#f50d", parse_color, noop),
+        MD_FIELD(start_marker_size, "8", parse_double, noop),
+        MD_FIELD(start_marker_shape, "caret", parse_drag_marker_shape, noop)
     ),
 };
 #pragma GCC diagnostic pop
