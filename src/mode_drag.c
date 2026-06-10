@@ -5,19 +5,29 @@
 #include "utils.h"
 
 #include <stdbool.h>
+#include <string.h>
 #include <xkbcommon/xkbcommon.h>
 
+static bool preceding_mode_is_floating(struct state *state) {
+    int prev = state->current_mode - 1;
+    return prev >= 0 &&
+           strcmp(state->mode_interfaces[prev]->name, "floating") == 0;
+}
+
 static void *drag_mode_enter(struct state *state, struct rect area) {
+    bool floating = preceding_mode_is_floating(state);
+
     if (state->drag_phase == 0) {
-        state->drag_start_x          = area.x;
-        state->drag_start_y          = area.y + area.h / 2;
-        state->drag_phase            = 1;
-        state->pending_drag_restart  = true;
+        state->drag_start_x         = floating ? area.x
+                                                : area.x + area.w / 2;
+        state->drag_start_y         = area.y + area.h / 2;
+        state->drag_phase           = 1;
+        state->pending_drag_restart = true;
     } else {
         state->drag_phase = 0;
         state->click      = CLICK_DRAG;
         struct rect end_point = {
-            .x = area.x + area.w - 1,
+            .x = floating ? area.x + area.w - 1 : area.x + area.w / 2,
             .y = area.y + area.h / 2,
             .w = 1,
             .h = 1,
