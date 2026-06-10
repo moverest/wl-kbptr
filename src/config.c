@@ -298,6 +298,26 @@ static int parse_click(void *dest, char *value) {
     return 0;
 }
 
+static int parse_drag_marker_shape(void *dest, char *value) {
+    enum drag_marker_shape *out = dest;
+    if (strcmp(value, "circle") == 0) {
+        *out = DRAG_MARKER_CIRCLE;
+    } else if (strcmp(value, "caret") == 0) {
+        *out = DRAG_MARKER_CARET;
+    } else if (strcmp(value, "rectangle") == 0) {
+        *out = DRAG_MARKER_RECTANGLE;
+    } else {
+        LOG_ERR(
+            "Invalid drag marker shape '%s'. Should be 'circle', 'caret' or "
+            "'rectangle'.",
+            value
+        );
+        return 1;
+    }
+
+    return 0;
+}
+
 static void free_home_row_keys(void *field_value) {
     char ***home_row_keys_ptr = field_value;
     if (*home_row_keys_ptr == NULL) {
@@ -354,6 +374,8 @@ struct section_def {
     FIELD(struct mode_split_config, name, default_value, parse, free, desc)
 #define MC_FIELD(name, default_value, parse, free, desc) \
     FIELD(struct mode_click_config, name, default_value, parse, free, desc)
+#define MD_FIELD(name, default_value, parse, free, desc) \
+    FIELD(struct mode_drag_config, name, default_value, parse, free, desc)
 
 static void noop() {}
 
@@ -535,6 +557,17 @@ static struct section_def section_defs[] = {
     SECTION(
         mode_click, "Configuration for click mode",
         MC_FIELD(button, "left", parse_click, noop, "Mouse button to trigger")
+    ),
+    SECTION(
+        mode_drag, "Configuration for drag option",
+        MD_FIELD(
+            start_marker_color, "#f50d", parse_color, noop, "Marker color"
+        ),
+        MD_FIELD(start_marker_size, "8", parse_double, noop, "Marker size"),
+        MD_FIELD(
+            start_marker_shape, "caret", parse_drag_marker_shape, noop,
+            "Marker shape"
+        )
     ),
 };
 #pragma GCC diagnostic pop

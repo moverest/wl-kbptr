@@ -221,6 +221,11 @@ void tile_mode_state_free(void *mode_state) {
     free(ms);
 }
 
+static void tile_mode_restart(struct state *state, void *mode_state) {
+    struct tile_mode_state *ms = mode_state;
+    label_selection_clear(ms->label_selection);
+}
+
 struct mode_interface tile_mode_interface = {
     .name    = "tile",
     .enter   = tile_mode_enter,
@@ -228,4 +233,5 @@ struct mode_interface tile_mode_interface = {
     .key     = tile_mode_key,
     .render  = tile_mode_render,
     .free    = tile_mode_state_free,
+    .restart = tile_mode_restart,
 };

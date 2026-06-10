@@ -23,6 +23,8 @@ click_mode_render(struct state *state, void *mode_state, cairo_t *cairo) {}
 
 static void click_mode_free(void *mode_state) {}
 
+static void click_mode_restart(struct state *state, void *mode_state) {}
+
 struct mode_interface click_mode_interface = {
     .name    = "click",
     .enter   = click_mode_enter,
@@ -30,4 +32,5 @@ struct mode_interface click_mode_interface = {
     .key     = click_mode_key,
     .render  = click_mode_render,
     .free    = click_mode_free,
+    .restart = click_mode_restart,
 };

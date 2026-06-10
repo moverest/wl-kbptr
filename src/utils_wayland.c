@@ -111,3 +111,52 @@ void move_pointer(
 
     zwlr_virtual_pointer_v1_destroy(virt_pointer);
 }
+
+void drag_pointer(
+    struct state *state, uint32_t start_x, uint32_t start_y, uint32_t end_x,
+    uint32_t end_y
+) {
+    if (!state->wl_virtual_pointer_mgr) {
+        return;
+    }
+
+    wl_display_roundtrip(state->wl_display);
+
+    struct zwlr_virtual_pointer_v1 *virt_pointer =
+        zwlr_virtual_pointer_manager_v1_create_virtual_pointer_with_output(
+            state->wl_virtual_pointer_mgr,
+            ((struct seat *)state->seats.next)->wl_seat,
+            state->current_output->wl_output
+        );
+
+    uint32_t output_width  = state->current_output->width;
+    uint32_t output_height = state->current_output->height;
+
+    uint32_t sx = start_x, sy = start_y, sw = output_width, sh = output_height;
+    _apply_transform(&sx, &sy, &sw, &sh, state->current_output->transform);
+
+    uint32_t ex = end_x, ey = end_y, ew = output_width, eh = output_height;
+    _apply_transform(&ex, &ey, &ew, &eh, state->current_output->transform);
+
+    zwlr_virtual_pointer_v1_motion_absolute(virt_pointer, 0, sx, sy, sw, sh);
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_button(
+        virt_pointer, 0, 272, WL_POINTER_BUTTON_STATE_PRESSED
+    );
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_motion_absolute(virt_pointer, 0, ex, ey, ew, eh);
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_button(
+        virt_pointer, 0, 272, WL_POINTER_BUTTON_STATE_RELEASED
+    );
+    zwlr_virtual_pointer_v1_frame(virt_pointer);
+    wl_display_roundtrip(state->wl_display);
+
+    zwlr_virtual_pointer_v1_destroy(virt_pointer);
+}

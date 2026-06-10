@@ -18,6 +18,7 @@ enum click {
     CLICK_LEFT_BTN,
     CLICK_RIGHT_BTN,
     CLICK_MIDDLE_BTN,
+    CLICK_DRAG,
 };
 
 int max(int a, int b);
