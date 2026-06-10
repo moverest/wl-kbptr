@@ -248,6 +248,11 @@ void floating_mode_free(void *mode_state) {
     free(ms);
 }
 
+static void floating_mode_restart(struct state *state, void *mode_state) {
+    struct floating_mode_state *ms = mode_state;
+    label_selection_clear(ms->label_selection);
+}
+
 struct mode_interface floating_mode_interface = {
     .name    = "floating",
     .enter   = floating_mode_enter,
@@ -255,4 +260,5 @@ struct mode_interface floating_mode_interface = {
     .key     = floating_mode_key,
     .render  = floating_mode_render,
     .free    = floating_mode_free,
+    .restart = floating_mode_restart,
 };

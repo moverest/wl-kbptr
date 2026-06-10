@@ -81,6 +81,10 @@ struct mode_click_config {
     enum click button;
 };
 
+struct mode_drag_config {
+    uint32_t start_marker_color;
+};
+
 struct config {
     struct general_config       general;
     struct mode_tile_config     mode_tile;
@@ -88,6 +92,7 @@ struct config {
     struct mode_bisect_config   mode_bisect;
     struct mode_split_config    mode_split;
     struct mode_click_config    mode_click;
+    struct mode_drag_config     mode_drag;
 };
 
 /**

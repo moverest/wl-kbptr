@@ -16,6 +16,10 @@ struct mode_interface {
     bool (*key)(struct state *, void *mode_state, xkb_keysym_t, char *text);
     void (*render)(struct state *, void *mode_state, cairo_t *);
     void (*free)(void *mode_state);
+    // Called when drag mode wants to re-run this mode for a second selection.
+    // Should reset the mode to its initial state without re-doing setup
+    // (e.g., clear label selections but keep loaded areas).
+    void (*restart)(struct state *, void *mode_state);
 };
 
 extern struct mode_interface *mode_interfaces[];

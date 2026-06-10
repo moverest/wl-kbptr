@@ -3,7 +3,9 @@
 #include "mode.h"
 
 #include "log.h"
+#include "utils_cairo.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,10 +14,12 @@ extern struct mode_interface floating_mode_interface;
 extern struct mode_interface bisect_mode_interface;
 extern struct mode_interface split_mode_interface;
 extern struct mode_interface click_mode_interface;
+extern struct mode_interface drag_mode_interface;
 
 struct mode_interface *mode_interfaces[] = {
     &tile_mode_interface,  &floating_mode_interface, &bisect_mode_interface,
-    &split_mode_interface, &click_mode_interface,    NULL,
+    &split_mode_interface, &click_mode_interface,    &drag_mode_interface,
+    NULL,
 };
 
 static struct mode_interface *find_mode_interface_by_name(char *name) {
@@ -78,6 +82,15 @@ void enter_next_mode(struct state *state, struct rect area) {
 
     state->mode_states[state->current_mode] =
         state->mode_interfaces[state->current_mode]->enter(state, area);
+
+    if (state->pending_drag_restart) {
+        state->pending_drag_restart = false;
+        int drag_idx                = state->current_mode;
+        for (int i = 0; i < drag_idx; i++) {
+            state->mode_interfaces[i]->restart(state, state->mode_states[i]);
+        }
+        state->current_mode = 0;
+    }
 }
 
 bool has_last_mode_returned(struct state *state) {
@@ -132,7 +145,17 @@ void mode_render(struct state *state, cairo_t *cairo) {
         return;
     }
 
-    return state->mode_interfaces[state->current_mode]->render(
+    state->mode_interfaces[state->current_mode]->render(
         state, state->mode_states[state->current_mode], cairo
     );
+
+    if (state->drag_phase == 1) {
+        double r = 8.0;
+        cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+        cairo_set_source_u32(cairo, state->config.mode_drag.start_marker_color);
+        cairo_arc(
+            cairo, state->drag_start_x, state->drag_start_y, r, 0, 2 * M_PI
+        );
+        cairo_fill(cairo);
+    }
 }

@@ -357,6 +357,12 @@ void split_mode_free(void *mode_state) {
     free(mode_state);
 }
 
+static void split_mode_restart(struct state *state, void *mode_state) {
+    struct split_mode_state *ms = mode_state;
+    ms->current                 = 0;
+    split_mode_move_pointer(state, ms);
+}
+
 struct mode_interface split_mode_interface = {
     .name    = "split",
     .enter   = split_mode_enter,
@@ -364,4 +370,5 @@ struct mode_interface split_mode_interface = {
     .key     = split_mode_key,
     .render  = split_mode_render,
     .free    = split_mode_free,
+    .restart = split_mode_restart,
 };

@@ -515,6 +515,12 @@ void bisect_mode_free(void *mode_state) {
     free(ms);
 }
 
+static void bisect_mode_restart(struct state *state, void *mode_state) {
+    struct bisect_mode_state *ms = mode_state;
+    ms->current                  = 0;
+    bisect_mode_move_pointer(state, ms);
+}
+
 struct mode_interface bisect_mode_interface = {
     .name    = "bisect",
     .enter   = bisect_mode_enter,
@@ -522,4 +528,5 @@ struct mode_interface bisect_mode_interface = {
     .key     = bisect_mode_key,
     .render  = bisect_mode_render,
     .free    = bisect_mode_free,
+    .restart = bisect_mode_restart,
 };
