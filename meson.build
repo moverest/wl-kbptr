@@ -40,6 +40,8 @@ if use_kde
       'basu',
       not_found_message: 'KDE backend requires libsystemd or basu (sd-bus).',
     )
+    # basu ships its sd-bus header under <basu/sd-bus.h>, not <systemd/sd-bus.h>.
+    add_project_arguments('-DUSE_BASU_SDBUS=1', language: ['c'])
   endif
 endif
 
