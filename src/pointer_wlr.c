@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-#include "utils_wayland.h"
+#include "pointer.h"
 
 #include "state.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
@@ -63,7 +63,7 @@ static void _apply_transform(
     }
 }
 
-void move_pointer(
+void pointer_wlr_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 ) {
     if (!state->wl_virtual_pointer_mgr) {
