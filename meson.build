@@ -110,6 +110,16 @@ label_test_exec = executable(
 
 test('test_label', label_test_exec)
 
+pointer_test_exec = executable(
+  'test_pointer',
+  [
+    'src/test_pointer.c',
+    'src/pointer_kde_coords.c',
+  ],
+)
+
+test('test_pointer', pointer_test_exec)
+
 install_data(
   'share/wl-kbptr.desktop',
   rename: 'wl-kbptr.desktop',
