@@ -95,6 +95,10 @@ if use_kde
   dependencies += [libei, sdbus]
 endif
 
+if use_kde and use_opencv
+  sources += ['src/screenshot_kde.c']
+endif
+
 executable(
   'wl-kbptr',
   sources,
