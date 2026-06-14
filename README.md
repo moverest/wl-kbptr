@@ -56,8 +56,10 @@ The `click` mode simply triggers a click in the middle of the selection area.
 
 For `wl-kbptr` to work, it requires the following protocols:
  - [`wlr-layer-shell-unstable-v1`](https://wayland.app/protocols/wlr-layer-shell-unstable-v1) for the program to display on top,
- - [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) to control the mouse pointer,
+ - [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) to control the mouse pointer (on wlroots-based compositors),
  - and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) (optional) to capture the screen for target detection in the `floating` mode.
+
+On KWin, pointer movement and clicks are driven via libei over KWin's EIS RemoteDesktop D-Bus interface instead of `wlr-virtual-pointer`; this requires a build with the `kde` feature (see [build instructions](#from-sources)).
 
 Here are the compositors with which it has been tested:
 
@@ -69,7 +71,7 @@ Here are the compositors with which it has been tested:
 | [dwl](https://codeberg.org/dwl/dwl) | ✅ | - |
 | [labwc](https://labwc.github.io) | ✅ | - |
 | [Wayfire](https://wayfire.org) | ✅ | The pointer doesn't move to the right location with multiple display outputs. See [#56](https://github.com/moverest/wl-kbptr/issues/56#issuecomment-3087922040). |
-| [KWin](https://github.com/KDE/kwin) | ❗ | The compositor doesn't support the [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocols. It can still work with the `--print-only` option and the mouse pointer can then be moved with `ydotool` or similar. |
+| [KWin](https://github.com/KDE/kwin) | ✅ | Cursor movement and clicks work natively when built with the `kde` feature (via libei / KWin's EIS RemoteDesktop D-Bus interface). Screenshot-based auto-detection (`floating` + `detect`) is not yet supported. Alternatively, `--print-only` with `ydotool` or similar still works. |
 | [Mutter](https://mutter.gnome.org) | ❌ | The compositor doesn't support any of the required protocols. |
 
 ## Installation
@@ -126,6 +128,15 @@ If you want to build the target detection feature (see [floating mode](#floating
 meson setup build --buildtype=release -Dopencv=enabled
 meson compile -C build
 ```
+
+For native KWin support (cursor movement and clicks via libei), enable the `kde` feature:
+
+```bash
+meson setup build --buildtype=release -Dkde=enabled
+meson compile -C build
+```
+
+This requires `libei` and an sd-bus implementation (`libsystemd`, or `basu` on non-systemd systems). KWin moves the pointer through its EIS RemoteDesktop interface; the `wlr-virtual-pointer` protocol is not used on KWin.
 
 Then install with:
 
@@ -222,6 +233,9 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
   - C++ compiler
   - [`OpenCV`](https://opencv.org)
   - [`Pixman`](https://www.pixman.org)
+- With the `kde` feature enabled:
+  - [`libei`](https://libinput.pages.freedesktop.org/libei/) (`libei-1.0`)
+  - An sd-bus implementation: [`libsystemd`](https://systemd.io) (systemd-based systems) or [`basu`](https://github.com/emersion/basu) (non-systemd / musl systems)
 
 
 ## License
