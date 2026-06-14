@@ -1,1 +1,2 @@
 option('opencv', type: 'feature', value: 'disabled')
+option('kde', type: 'feature', value: 'disabled')

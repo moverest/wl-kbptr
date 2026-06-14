@@ -8,6 +8,7 @@ project(
 )
 
 use_opencv = get_option('opencv').enabled()
+use_kde = get_option('kde').enabled()
 version_suffix = ''
 
 if get_option('buildtype') == 'debug'
@@ -28,6 +29,18 @@ if use_opencv
   add_languages('cpp', native: false)
   opencv = dependency('opencv4')
   pixman = dependency('pixman-1')
+endif
+
+if use_kde
+  add_project_arguments('-DKDE_ENABLED=1', language: ['c'])
+  libei = dependency('libei-1.0')
+  sdbus = dependency('libsystemd', required: false)
+  if not sdbus.found()
+    sdbus = dependency(
+      'basu',
+      not_found_message: 'KDE backend requires libsystemd or basu (sd-bus).',
+    )
+  endif
 endif
 
 wayland_client = dependency('wayland-client')
@@ -69,6 +82,14 @@ if use_opencv
     'src/target_detection.cpp',
   ]
   dependencies += [opencv, pixman]
+endif
+
+if use_kde
+  sources += [
+    'src/pointer_kde.c',
+    'src/eis_dbus.c',
+  ]
+  dependencies += [libei, sdbus]
 endif
 
 executable(
