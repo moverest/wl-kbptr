@@ -23,12 +23,13 @@
 #define MAX_REGIONS 16
 
 struct kde_ei_state {
-    struct ei        *ei;
-    struct ei_seat   *seat;
-    struct ei_device *device;
-    bool              device_resumed;
-    bool              pong_received;
-    bool              failed;
+    struct eis_connection conn;
+    struct ei            *ei;
+    struct ei_seat       *seat;
+    struct ei_device     *device;
+    bool                  device_resumed;
+    bool                  pong_received;
+    bool                  failed;
 };
 
 static void drain_events(struct kde_ei_state *s) {
@@ -64,12 +65,19 @@ static void drain_events(struct kde_ei_state *s) {
 
 static bool pump_until_resumed(struct kde_ei_state *s) {
     while (!s->device_resumed && !s->failed) {
-        struct pollfd pfd = {.fd = ei_get_fd(s->ei), .events = POLLIN};
-        if (poll(&pfd, 1, 2000) <= 0) {
-            return false; // timeout or error
-        }
+        // Dispatch first so the initial connection handshake -- and any request
+        // queued during the previous drain (e.g. capability binding) -- is
+        // driven before we block in poll(). Polling first would block waiting
+        // for a response KWin has no reason to send yet, timing out.
         ei_dispatch(s->ei);
         drain_events(s);
+        if (s->device_resumed || s->failed) {
+            break;
+        }
+        struct pollfd pfd = {.fd = ei_get_fd(s->ei), .events = POLLIN};
+        if (poll(&pfd, 1, 2000) <= 0) {
+            break; // timeout or error
+        }
     }
     return s->device_resumed && !s->failed;
 }
@@ -90,31 +98,35 @@ static void flush_until_pong(struct kde_ei_state *s) {
     ei_ping_unref(ping);
 
     while (!s->pong_received && !s->failed) {
-        struct pollfd pfd = {.fd = ei_get_fd(s->ei), .events = POLLIN};
-        if (poll(&pfd, 1, 2000) <= 0) {
-            return; // timeout or error: proceed to teardown
-        }
         ei_dispatch(s->ei);
         drain_events(s);
+        if (s->pong_received || s->failed) {
+            break;
+        }
+        struct pollfd pfd = {.fd = ei_get_fd(s->ei), .events = POLLIN};
+        if (poll(&pfd, 1, 2000) <= 0) {
+            break; // timeout or error: proceed to teardown
+        }
     }
 }
 
 static struct ei_device *kde_connect_device(struct kde_ei_state *s) {
-    int fd = eis_dbus_connect();
-    if (fd < 0) {
+    if (!eis_dbus_connect(&s->conn)) {
         return NULL;
     }
 
     s->ei = ei_new_sender(NULL);
     if (s->ei == NULL) {
-        close(fd);
+        close(s->conn.fd);
+        eis_dbus_disconnect(&s->conn);
         return NULL;
     }
 
-    // ei_setup_backend_fd() takes ownership of fd (closes it on teardown) and
-    // returns 0 on success or a negative errno on failure. Do not close fd
-    // after this call; ei_unref() releases everything including the fd.
-    int err = ei_setup_backend_fd(s->ei, fd);
+    // ei_setup_backend_fd() takes ownership of the fd (closes it on teardown)
+    // and returns 0 on success or a negative errno on failure. Do not close the
+    // fd after this call; ei_unref() releases it. The D-Bus connection in
+    // s->conn must stay open until after ei_unref() (see pointer_kde_move).
+    int err = ei_setup_backend_fd(s->ei, s->conn.fd);
     if (err < 0) {
         LOG_ERR("ei_setup_backend_fd failed.");
         return NULL;
@@ -129,11 +141,12 @@ static struct ei_device *kde_connect_device(struct kde_ei_state *s) {
 
 bool pointer_kde_available(struct state *state) {
     (void)state;
-    int fd = eis_dbus_connect();
-    if (fd < 0) {
+    struct eis_connection conn;
+    if (!eis_dbus_connect(&conn)) {
         return false;
     }
-    close(fd);
+    close(conn.fd);
+    eis_dbus_disconnect(&conn);
     return true;
 }
 
@@ -149,6 +162,7 @@ void pointer_kde_move(
         if (s.ei != NULL) {
             ei_unref(s.ei);
         }
+        eis_dbus_disconnect(&s.conn);
         return;
     }
 
@@ -204,6 +218,8 @@ void pointer_kde_move(
     flush_until_pong(&s);
 
     ei_unref(s.ei);
+    // Drop the D-Bus connection only now that libei is fully torn down.
+    eis_dbus_disconnect(&s.conn);
 }
 
 #endif
