@@ -127,8 +127,21 @@ pointer_test_exec = executable(
 
 test('test_pointer', pointer_test_exec)
 
-install_data(
-  'share/wl-kbptr.desktop',
-  rename: 'wl-kbptr.desktop',
-  install_dir: 'share/applications',
+desktop_conf = configuration_data()
+desktop_conf.set('bindir', get_option('prefix') / get_option('bindir'))
+if use_kde
+  desktop_conf.set(
+    'kde_restricted',
+    'X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2',
+  )
+else
+  desktop_conf.set('kde_restricted', '')
+endif
+
+configure_file(
+  input: 'share/wl-kbptr.desktop.in',
+  output: 'wl-kbptr.desktop',
+  configuration: desktop_conf,
+  install: true,
+  install_dir: get_option('datadir') / 'applications',
 )
