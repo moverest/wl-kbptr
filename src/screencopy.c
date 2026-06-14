@@ -15,6 +15,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#if KDE_ENABLED
+#include "screenshot_kde.h"
+#endif
+
 enum screen_capture_state {
     CAPTURE_NOT_REQUESTED,
     CAPTURE_REQUESTED,
@@ -70,11 +74,16 @@ static struct scrcpy_buffer *create_scrcpy_buffer(
 }
 
 void destroy_scrcpy_buffer(struct scrcpy_buffer *buf) {
-    if (buf != NULL) {
+    if (buf == NULL) {
+        return;
+    }
+    if (buf->wl_buffer != NULL) {
         munmap(buf->data, buf->stride * buf->height);
         wl_buffer_destroy(buf->wl_buffer);
-        free(buf);
+    } else {
+        free(buf->data);
     }
+    free(buf);
 }
 
 static void screencopy_frame_handle_buffer(
@@ -123,7 +132,7 @@ const struct zwlr_screencopy_frame_v1_listener screencopy_frame_listener = {
 };
 
 struct scrcpy_buffer *
-query_screenshot(struct state *state, struct rect region) {
+query_screenshot_wlr(struct state *state, struct rect region) {
     struct scrcpy_state scrcpy_state;
     scrcpy_state.wl_shm = state->wl_shm;
 
@@ -155,6 +164,16 @@ query_screenshot(struct state *state, struct rect region) {
     zwlr_screencopy_frame_v1_destroy(scrcpy_state.wl_screencopy_frame);
 
     return scrcpy_state.scrcpy_buffer;
+}
+
+struct scrcpy_buffer *query_screenshot(struct state *state, struct rect region) {
+#if KDE_ENABLED
+    // KWin has no wlr-screencopy; fall back to the ScreenShot2 backend.
+    if (state->wl_screencopy_manager == NULL) {
+        return query_screenshot_kde(state, region);
+    }
+#endif
+    return query_screenshot_wlr(state, region);
 }
 
 #endif
