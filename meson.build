@@ -89,6 +89,7 @@ endif
 if use_kde
   sources += [
     'src/pointer_kde.c',
+    'src/pointer_kde_coords.c',
     'src/eis_dbus.c',
   ]
   dependencies += [libei, sdbus]
