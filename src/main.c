@@ -652,6 +652,9 @@ static void print_version() {
 #if OPENCV_ENABLED
     printf(" (opencv)");
 #endif
+#if KDE_ENABLED
+    printf(" (kde)");
+#endif
     puts("");
 }
 
@@ -820,10 +823,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+#if !KDE_ENABLED
     if (state.wl_virtual_pointer_mgr == NULL && !only_print) {
         LOG_ERR("Failed to get wlr_virtual_pointer_manager_v1 object.");
         return 1;
     }
+#endif
 
     if (state.xdg_output_manager == NULL) {
         LOG_ERR("Failed to get xdg_output_manager object.");
