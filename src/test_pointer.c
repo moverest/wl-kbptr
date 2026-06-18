@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 #include "log.h"
-#include "pointer_kde_coords.h"
+#include "pointer_kwin_coords.h"
 
 int main() {
     // Two side-by-side 1920x1080 outputs.

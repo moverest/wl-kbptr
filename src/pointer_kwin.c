@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-#if KDE_ENABLED
-
-#include "pointer.h"
+#if KWIN_ENABLED
 
 #include "eis_dbus.h"
 #include "log.h"
-#include "pointer_kde_coords.h"
+#include "pointer.h"
+#include "pointer_kwin_coords.h"
 #include "state.h"
 
 #include <libei.h>
@@ -22,7 +21,7 @@
 
 #define MAX_REGIONS 16
 
-struct kde_ei_state {
+struct kwin_ei_state {
     struct eis_connection conn;
     struct ei            *ei;
     struct ei_seat       *seat;
@@ -32,7 +31,7 @@ struct kde_ei_state {
     bool                  failed;
 };
 
-static void drain_events(struct kde_ei_state *s) {
+static void drain_events(struct kwin_ei_state *s) {
     struct ei_event *e;
     while ((e = ei_get_event(s->ei)) != NULL) {
         switch (ei_event_get_type(e)) {
@@ -63,7 +62,7 @@ static void drain_events(struct kde_ei_state *s) {
     }
 }
 
-static bool pump_until_resumed(struct kde_ei_state *s) {
+static bool pump_until_resumed(struct kwin_ei_state *s) {
     while (!s->device_resumed && !s->failed) {
         // Dispatch first so the initial connection handshake -- and any request
         // queued during the previous drain (e.g. capability binding) -- is
@@ -89,7 +88,7 @@ static bool pump_until_resumed(struct kde_ei_state *s) {
 // written out and processed. Pump the existing poll/ei_dispatch/drain loop
 // until the pong (or a disconnect, or the 2s timeout) is observed, then return
 // so the caller can ei_unref(). On timeout we just proceed; we never hang.
-static void flush_until_pong(struct kde_ei_state *s) {
+static void flush_until_pong(struct kwin_ei_state *s) {
     struct ei_ping *ping = ei_new_ping(s->ei);
     if (ping == NULL) {
         return;
@@ -110,7 +109,7 @@ static void flush_until_pong(struct kde_ei_state *s) {
     }
 }
 
-static struct ei_device *kde_connect_device(struct kde_ei_state *s) {
+static struct ei_device *kwin_connect_device(struct kwin_ei_state *s) {
     if (!eis_dbus_connect(&s->conn)) {
         return NULL;
     }
@@ -125,7 +124,7 @@ static struct ei_device *kde_connect_device(struct kde_ei_state *s) {
     // ei_setup_backend_fd() takes ownership of the fd (closes it on teardown)
     // and returns 0 on success or a negative errno on failure. Do not close the
     // fd after this call; ei_unref() releases it. The D-Bus connection in
-    // s->conn must stay open until after ei_unref() (see pointer_kde_move).
+    // s->conn must stay open until after ei_unref() (see pointer_kwin_move).
     int err = ei_setup_backend_fd(s->ei, s->conn.fd);
     if (err < 0) {
         LOG_ERR("ei_setup_backend_fd failed.");
@@ -139,7 +138,7 @@ static struct ei_device *kde_connect_device(struct kde_ei_state *s) {
     return s->device;
 }
 
-bool pointer_kde_available(struct state *state) {
+bool pointer_kwin_available(struct state *state) {
     (void)state;
     struct eis_connection conn;
     if (!eis_dbus_connect(&conn)) {
@@ -150,14 +149,14 @@ bool pointer_kde_available(struct state *state) {
     return true;
 }
 
-void pointer_kde_move(
+void pointer_kwin_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 ) {
     int32_t gx = state->current_output->x + (int32_t)x;
     int32_t gy = state->current_output->y + (int32_t)y;
 
-    struct kde_ei_state s      = {0};
-    struct ei_device   *device = kde_connect_device(&s);
+    struct kwin_ei_state s      = {0};
+    struct ei_device    *device = kwin_connect_device(&s);
     if (device == NULL) {
         if (s.ei != NULL) {
             ei_unref(s.ei);
@@ -169,9 +168,8 @@ void pointer_kde_move(
     struct eis_region regions[MAX_REGIONS];
     uint32_t          num_regions = 0;
     struct ei_region *r;
-    for (size_t i = 0;
-         (r = ei_device_get_region(device, i)) != NULL
-         && num_regions < MAX_REGIONS;
+    for (size_t i = 0; (r = ei_device_get_region(device, i)) != NULL &&
+                       num_regions < MAX_REGIONS;
          i++) {
         regions[num_regions].x      = (int32_t)ei_region_get_x(r);
         regions[num_regions].y      = (int32_t)ei_region_get_y(r);
@@ -180,8 +178,8 @@ void pointer_kde_move(
         num_regions++;
     }
 
-    double               tx, ty;
-    struct region_point  p;
+    double              tx, ty;
+    struct region_point p;
     if (map_global_to_region(regions, num_regions, gx, gy, &p)) {
         tx = (double)regions[p.region_index].x + p.x;
         ty = (double)regions[p.region_index].y + p.y;

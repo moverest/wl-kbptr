@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-#if KDE_ENABLED
+#if KWIN_ENABLED
 
 #include "eis_dbus.h"
 

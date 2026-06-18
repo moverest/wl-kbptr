@@ -27,7 +27,7 @@ The areas can also be automatically detected with `mode_floating.source` configu
 
 This requires the `wl-kbptr` binary to be built with the `opencv` feature and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol &mdash; see the [supported compositors](#supported-compositors) section and [build instructions](#from-sources) for details. Whilst it doesn't noticeably change the size of the program itself, OpenCV is a 100 MB+ dependency which is not ideal if you want a very small system which is why this is an optional feature.
 
-On KWin (which doesn't support `wlr-screencopy-unstable-v1`) the screen is instead captured through KWin's [`org.kde.KWin.ScreenShot2`](https://invent.kde.org/plasma/kwin/-/blob/master/src/plugins/screenshot/org.kde.KWin.ScreenShot2.xml) D-Bus interface. This needs a binary built with **both** the `opencv` and `kde` features, and &mdash; because `ScreenShot2` is a restricted interface &mdash; the program must be **installed**: the bundled desktop file carries the required `X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2` entry, so running from the build tree is not authorized to capture.
+On KWin (which doesn't support `wlr-screencopy-unstable-v1`) the screen is instead captured through KWin's [`org.kde.KWin.ScreenShot2`](https://invent.kde.org/plasma/kwin/-/blob/master/src/plugins/screenshot/org.kde.KWin.ScreenShot2.xml) D-Bus interface. This needs a binary built with **both** the `opencv` and `kwin` features, and &mdash; because `ScreenShot2` is a restricted interface &mdash; the program must be **installed**: the bundled desktop file carries the required `X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2` entry, so running from the build tree is not authorized to capture.
 
 Most distributions will package the program with the option enabled. If not, they will usually provide two packages. You can check if the binary you have has been built with it with `wl-kbptr --version` &mdash; it should print `opencv` if supported.
 
@@ -61,7 +61,7 @@ For `wl-kbptr` to work, it requires the following protocols:
  - [`wlr-virtual-pointer-unstable-v1`](https://wayland.app/protocols/wlr-virtual-pointer-unstable-v1) to control the mouse pointer (on wlroots-based compositors),
  - and [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) (optional) to capture the screen for target detection in the `floating` mode.
 
-On KWin, pointer movement and clicks are driven via libei over KWin's EIS RemoteDesktop D-Bus interface instead of `wlr-virtual-pointer`; this requires a build with the `kde` feature (see [build instructions](#from-sources)).
+On KWin, pointer movement and clicks are driven via libei over KWin's EIS RemoteDesktop D-Bus interface instead of `wlr-virtual-pointer`; this requires a build with the `kwin` feature (see [build instructions](#from-sources)).
 
 Here are the compositors with which it has been tested:
 
@@ -73,7 +73,7 @@ Here are the compositors with which it has been tested:
 | [dwl](https://codeberg.org/dwl/dwl) | ✅ | - |
 | [labwc](https://labwc.github.io) | ✅ | - |
 | [Wayfire](https://wayfire.org) | ✅ | The pointer doesn't move to the right location with multiple display outputs. See [#56](https://github.com/moverest/wl-kbptr/issues/56#issuecomment-3087922040). |
-| [KWin](https://github.com/KDE/kwin) | ✅ | Cursor movement and clicks work natively when built with the `kde` feature (via libei / KWin's EIS RemoteDesktop D-Bus interface). Target auto-detection (`floating` + `detect`) also works when built with both the `kde` and `opencv` features and the program is installed (it captures via KWin's `org.kde.KWin.ScreenShot2` interface, which requires the desktop-file allow-list entry). Alternatively, `--print-only` with `ydotool` or similar still works. |
+| [KWin](https://github.com/KDE/kwin) | ✅ | Cursor movement and clicks work natively when built with the `kwin` feature (via libei / KWin's EIS RemoteDesktop D-Bus interface). Target auto-detection (`floating` + `detect`) also works when built with both the `kwin` and `opencv` features and the program is installed (it captures via KWin's `org.kde.KWin.ScreenShot2` interface, which requires the desktop-file allow-list entry). Alternatively, `--print-only` with `ydotool` or similar still works. |
 | [Mutter](https://mutter.gnome.org) | ❌ | The compositor doesn't support any of the required protocols. |
 
 ## Installation
@@ -131,16 +131,16 @@ meson setup build --buildtype=release -Dopencv=enabled
 meson compile -C build
 ```
 
-For native KWin support (cursor movement and clicks via libei), enable the `kde` feature:
+For native KWin support (cursor movement and clicks via libei), enable the `kwin` feature:
 
 ```bash
-meson setup build --buildtype=release -Dkde=enabled
+meson setup build --buildtype=release -Dkwin=enabled
 meson compile -C build
 ```
 
 This requires `libei` and an sd-bus implementation (`libsystemd`, or `basu` on non-systemd systems). KWin moves the pointer through its EIS RemoteDesktop interface; the `wlr-virtual-pointer` protocol is not used on KWin.
 
-To also get target auto-detection on KWin, enable both features (`-Dopencv=enabled -Dkde=enabled`) and **install** the program (`meson install`). KWin only authorizes the `org.kde.KWin.ScreenShot2` capture for an installed binary whose desktop file declares the allow-list entry, so auto-detection does not work when running from the build tree.
+To also get target auto-detection on KWin, enable both features (`-Dopencv=enabled -Dkwin=enabled`) and **install** the program (`meson install`). KWin only authorizes the `org.kde.KWin.ScreenShot2` capture for an installed binary whose desktop file declares the allow-list entry, so auto-detection does not work when running from the build tree.
 
 Then install with:
 
@@ -237,7 +237,7 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
   - C++ compiler
   - [`OpenCV`](https://opencv.org)
   - [`Pixman`](https://www.pixman.org)
-- With the `kde` feature enabled:
+- With the `kwin` feature enabled:
   - [`libei`](https://libinput.pages.freedesktop.org/libei/) (`libei-1.0`)
   - An sd-bus implementation: [`libsystemd`](https://systemd.io) (systemd-based systems) or [`basu`](https://github.com/emersion/basu) (non-systemd / musl systems)
 

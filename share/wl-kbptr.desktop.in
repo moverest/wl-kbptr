@@ -5,4 +5,4 @@ Comment=Control the mouse pointer with the keyboard
 Exec=@bindir@/wl-kbptr
 Terminal=false
 Type=Application
-@kde_restricted@
+@kwin_restricted@

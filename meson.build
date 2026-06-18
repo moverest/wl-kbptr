@@ -8,7 +8,7 @@ project(
 )
 
 use_opencv = get_option('opencv').enabled()
-use_kde = get_option('kde').enabled()
+use_kwin = get_option('kwin').enabled()
 version_suffix = ''
 
 if get_option('buildtype') == 'debug'
@@ -31,8 +31,8 @@ if use_opencv
   pixman = dependency('pixman-1')
 endif
 
-if use_kde
-  add_project_arguments('-DKDE_ENABLED=1', language: ['c'])
+if use_kwin
+  add_project_arguments('-DKWIN_ENABLED=1', language: ['c'])
   libei = dependency('libei-1.0')
   sdbus = dependency('libsystemd', required: false)
   if not sdbus.found()
@@ -86,17 +86,17 @@ if use_opencv
   dependencies += [opencv, pixman]
 endif
 
-if use_kde
+if use_kwin
   sources += [
-    'src/pointer_kde.c',
-    'src/pointer_kde_coords.c',
+    'src/pointer_kwin.c',
+    'src/pointer_kwin_coords.c',
     'src/eis_dbus.c',
   ]
   dependencies += [libei, sdbus]
 endif
 
-if use_kde and use_opencv
-  sources += ['src/screenshot_kde.c']
+if use_kwin and use_opencv
+  sources += ['src/screenshot_kwin.c']
 endif
 
 executable(
@@ -121,7 +121,7 @@ pointer_test_exec = executable(
   'test_pointer',
   [
     'src/test_pointer.c',
-    'src/pointer_kde_coords.c',
+    'src/pointer_kwin_coords.c',
   ],
 )
 
@@ -129,13 +129,13 @@ test('test_pointer', pointer_test_exec)
 
 desktop_conf = configuration_data()
 desktop_conf.set('bindir', get_option('prefix') / get_option('bindir'))
-if use_kde
+if use_kwin
   desktop_conf.set(
-    'kde_restricted',
+    'kwin_restricted',
     'X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2',
   )
 else
-  desktop_conf.set('kde_restricted', '')
+  desktop_conf.set('kwin_restricted', '')
 endif
 
 configure_file(

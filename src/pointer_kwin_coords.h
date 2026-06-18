@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-#ifndef __POINTER_KDE_COORDS_H_INCLUDED__
-#define __POINTER_KDE_COORDS_H_INCLUDED__
+#ifndef __POINTER_KWIN_COORDS_H_INCLUDED__
+#define __POINTER_KWIN_COORDS_H_INCLUDED__
 
 #include <stdbool.h>
 #include <stdint.h>

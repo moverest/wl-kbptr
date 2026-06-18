@@ -3,7 +3,7 @@
 #ifndef __EIS_DBUS_H_INCLUDED__
 #define __EIS_DBUS_H_INCLUDED__
 
-#if KDE_ENABLED
+#if KWIN_ENABLED
 
 #include <stdbool.h>
 

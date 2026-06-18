@@ -19,10 +19,10 @@ void pointer_wlr_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 );
 
-#if KDE_ENABLED
-// KDE backend (EIS + libei). Built only with -Dkde=enabled.
-bool pointer_kde_available(struct state *state);
-void pointer_kde_move(
+#if KWIN_ENABLED
+// KWin backend (EIS + libei). Built only with -Dkwin=enabled.
+bool pointer_kwin_available(struct state *state);
+void pointer_kwin_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 );
 #endif

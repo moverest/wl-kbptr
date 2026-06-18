@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-#include "pointer_kde_coords.h"
+#include "pointer_kwin_coords.h"
 
 bool map_global_to_region(
     const struct eis_region *regions, uint32_t num_regions, int32_t gx,

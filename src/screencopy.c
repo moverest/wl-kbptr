@@ -15,8 +15,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#if KDE_ENABLED
-#include "screenshot_kde.h"
+#if KWIN_ENABLED
+#include "screenshot_kwin.h"
 #endif
 
 enum screen_capture_state {
@@ -166,11 +166,12 @@ query_screenshot_wlr(struct state *state, struct rect region) {
     return scrcpy_state.scrcpy_buffer;
 }
 
-struct scrcpy_buffer *query_screenshot(struct state *state, struct rect region) {
-#if KDE_ENABLED
+struct scrcpy_buffer *
+query_screenshot(struct state *state, struct rect region) {
+#if KWIN_ENABLED
     // KWin has no wlr-screencopy; fall back to the ScreenShot2 backend.
     if (state->wl_screencopy_manager == NULL) {
-        return query_screenshot_kde(state, region);
+        return query_screenshot_kwin(state, region);
     }
 #endif
     return query_screenshot_wlr(state, region);

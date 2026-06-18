@@ -12,9 +12,9 @@ void move_pointer(
         return;
     }
 
-#if KDE_ENABLED
-    if (pointer_kde_available(state)) {
-        pointer_kde_move(state, x, y, click);
+#if KWIN_ENABLED
+    if (pointer_kwin_available(state)) {
+        pointer_kwin_move(state, x, y, click);
         return;
     }
 #endif

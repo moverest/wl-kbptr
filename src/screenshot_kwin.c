@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-#if OPENCV_ENABLED && KDE_ENABLED
+#if OPENCV_ENABLED && KWIN_ENABLED
 
-#include "screenshot_kde.h"
+#include "screenshot_kwin.h"
 
 #include "log.h"
 #include "state.h"
@@ -99,7 +99,7 @@ static bool read_metadata(
 }
 
 struct scrcpy_buffer *
-query_screenshot_kde(struct state *state, struct rect region) {
+query_screenshot_kwin(struct state *state, struct rect region) {
     int32_t gx = state->current_output->x + region.x;
     int32_t gy = state->current_output->y + region.y;
 
