@@ -138,10 +138,10 @@ struct state {
     void                          *mode_states[MAX_NUM_MODES];
     int                            current_mode;
     enum click                     click;
+    bool                           drag;
     int32_t                        drag_start_x;
     int32_t                        drag_start_y;
     int                            drag_phase;
-    bool                           pending_drag_restart;
 };
 
 #endif

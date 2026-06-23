@@ -647,6 +647,7 @@ static void print_usage() {
     puts(" -o, --option        set configuration option");
     puts(" -O, --output        specify display output to use");
     puts(" -p, --only-print    only print, don't move the cursor or click");
+    puts(" -d, --drag          perform a click-and-drag between two selections");
 }
 
 static void print_version() {
@@ -679,10 +680,10 @@ int main(int argc, char **argv) {
         .initial_area         = (struct rect){-1, -1, -1, -1},
         .home_row = (char *[]){"", "", "", "", "", "", "", "", "", "", ""},
         .click                = CLICK_NONE,
+        .drag                 = false,
         .drag_start_x         = 0,
         .drag_start_y         = 0,
         .drag_phase           = 0,
-        .pending_drag_restart = false,
     };
 
     config_set_default(&state.config);
@@ -697,6 +698,7 @@ int main(int argc, char **argv) {
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
         {"only-print", no_argument, 0, 'p'},
+        {"drag", no_argument, 0, 'd'},
         {NULL, 0, NULL, 0}
     };
 
@@ -709,7 +711,7 @@ int main(int argc, char **argv) {
     char  *selected_output_name = NULL;
     bool   only_print           = false;
     while ((option_char = getopt_long(
-                argc, argv, "hvr:o:c:O:Rp", long_options, &option_index
+                argc, argv, "hvr:o:c:O:Rpd", long_options, &option_index
             )) != -1) {
         switch (option_char) {
         case 'h':
@@ -757,6 +759,10 @@ int main(int argc, char **argv) {
 
         case 'p':
             only_print = true;
+            break;
+
+        case 'd':
+            state.drag = true;
             break;
 
         default:

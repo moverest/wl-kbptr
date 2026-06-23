@@ -54,7 +54,6 @@ sources = [
   'src/mode_bisect.c',
   'src/mode_split.c',
   'src/mode_click.c',
-  'src/mode_drag.c',
   'src/utils.c',
   'src/utils_cairo.c',
   'src/utils_wayland.c',

@@ -14,12 +14,10 @@ extern struct mode_interface floating_mode_interface;
 extern struct mode_interface bisect_mode_interface;
 extern struct mode_interface split_mode_interface;
 extern struct mode_interface click_mode_interface;
-extern struct mode_interface drag_mode_interface;
 
 struct mode_interface *mode_interfaces[] = {
     &tile_mode_interface,  &floating_mode_interface, &bisect_mode_interface,
-    &split_mode_interface, &click_mode_interface,    &drag_mode_interface,
-    NULL,
+    &split_mode_interface, &click_mode_interface,    NULL,
 };
 
 static struct mode_interface *find_mode_interface_by_name(char *name) {
@@ -68,6 +66,14 @@ int load_modes(struct state *state, char *modes) {
     return 0;
 }
 
+static bool chain_includes_floating(struct state *state) {
+    for (int i = 0; i < MAX_NUM_MODES; i++) {
+        if (state->mode_interfaces[i] == NULL) break;
+        if (strcmp(state->mode_interfaces[i]->name, "floating") == 0) return true;
+    }
+    return false;
+}
+
 void enter_next_mode(struct state *state, struct rect area) {
     if (has_last_mode_returned(state)) {
         return;
@@ -76,21 +82,36 @@ void enter_next_mode(struct state *state, struct rect area) {
     state->current_mode += 1;
 
     if (has_last_mode_returned(state)) {
-        memcpy(&state->result, &area, sizeof(struct rect));
+        if (state->drag && state->drag_phase == 0) {
+            bool floating       = chain_includes_floating(state);
+            state->drag_start_x = floating ? area.x : area.x + area.w / 2;
+            state->drag_start_y = area.y + area.h / 2;
+            state->drag_phase   = 1;
+            for (int i = 0; i < state->current_mode; i++) {
+                state->mode_interfaces[i]->restart(
+                    state, state->mode_states[i]
+                );
+            }
+            state->current_mode = 0;
+        } else if (state->drag && state->drag_phase == 1) {
+            bool floating     = chain_includes_floating(state);
+            state->drag_phase = 0;
+            state->click      = CLICK_DRAG;
+            struct rect end_point = {
+                .x = floating ? area.x + area.w - 1 : area.x + area.w / 2,
+                .y = area.y + area.h / 2,
+                .w = 1,
+                .h = 1,
+            };
+            memcpy(&state->result, &end_point, sizeof(struct rect));
+        } else {
+            memcpy(&state->result, &area, sizeof(struct rect));
+        }
         return;
     }
 
     state->mode_states[state->current_mode] =
         state->mode_interfaces[state->current_mode]->enter(state, area);
-
-    if (state->pending_drag_restart) {
-        state->pending_drag_restart = false;
-        int drag_idx                = state->current_mode;
-        for (int i = 0; i < drag_idx; i++) {
-            state->mode_interfaces[i]->restart(state, state->mode_states[i]);
-        }
-        state->current_mode = 0;
-    }
 }
 
 bool has_last_mode_returned(struct state *state) {

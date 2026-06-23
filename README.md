@@ -11,8 +11,7 @@ To enable to select a target and click, it has four different modes:
 - [`tile`](#tile-mode) &mdash; which uses a grid to select areas,
 - [`bisect`](#bisect-mode) &mdash; which enables to bisect an area,
 - [`split`](#split-mode) &mdash; which enables to successively split an area,
-- [`click`](#click-mode) &mdash; which triggers a click in the middle of an area,
-- and [`drag`](#drag-mode) &mdash; which performs a click-and-drag between two selected areas (for text selection or dragging).
+- [`click`](#click-mode) &mdash; which triggers a click in the middle of an area.
 
 These are set with the `modes` configuration field and can be chained, e.g. `wl-kbptr -o modes=tile,bisect`.
 
@@ -53,23 +52,21 @@ Just like the `bisect` mode, a left, right and middle click can be made by press
 
 The `click` mode simply triggers a click in the middle of the selection area.
 
-### Drag mode
+## Drag flag
 
-The `drag` mode is a terminal mode (like [`click`](#click-mode)) that performs a left-button click-and-drag between two positions. It is designed to be chained after any selection mode and requires **two selections**:
+The `--drag` flag (or `-d`) changes the action from a single click to a click-and-drag between two selected positions. It is designed to be used with any mode chain and requires **two selections**:
 
-1. **Start**: the first time the preceding mode(s) resolve to a target, its left-center is stored as the drag start point. A red dot marker is drawn at that position and the selection resets so you can pick again.
+1. **Start**: the first selection's left-center is stored as the drag start point. A marker is drawn at that position and the selection resets so you can pick again.
 2. **End**: the second selection's right-center becomes the drag end point. The pointer then presses and holds the left button at the start, moves to the end, and releases.
 
 This makes it useful for selecting text (start at word/line beginning, end at word/line end) or dragging UI elements.
 
-It works with any preceding mode or chain of modes:
-
 ```
-wl-kbptr -o modes=tile,drag
-wl-kbptr -o modes=floating,drag
-wl-kbptr -o modes=bisect,drag
-wl-kbptr -o modes=split,drag
-wl-kbptr -o modes=tile,bisect,drag
+wl-kbptr -o modes=tile,click --drag
+wl-kbptr -o modes=floating,click --drag
+wl-kbptr -o modes=bisect,click --drag
+wl-kbptr -o modes=split,click --drag
+wl-kbptr -o modes=tile,bisect,click --drag
 ```
 
 ## Supported compositors
