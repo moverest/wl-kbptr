@@ -21,10 +21,14 @@ void pointer_wlr_move(
 
 #if KWIN_ENABLED
 // KWin backend (EIS + libei). Built only with -Dkwin=enabled.
-bool pointer_kwin_available(struct state *state);
+//
+// The EIS session is opened lazily on the first move and reused for every
+// subsequent move/click; pointer_kwin_destroy() tears it down at exit. A failed
+// connection is remembered so we don't retry (and re-prompt) on every keystroke.
 void pointer_kwin_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 );
+void pointer_kwin_destroy(struct state *state);
 #endif
 
 #endif

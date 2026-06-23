@@ -41,6 +41,10 @@
 
 struct mode_interface;
 
+// Defined in pointer_kwin.c; held as an opaque pointer so the EIS/libei session
+// can be opened once and reused across all pointer moves (see pointer_kwin.c).
+struct kwin_ei_state;
+
 struct tile_mode_state {
     struct rect area;
 
@@ -121,6 +125,10 @@ struct state {
     bool                                    surface_configured;
 #if OPENCV_ENABLED
     struct zwlr_screencopy_manager_v1 *wl_screencopy_manager;
+#endif
+#if KWIN_ENABLED
+    // Reused KWin EIS/libei session, lazily opened on the first pointer move.
+    struct kwin_ei_state *pointer_kwin;
 #endif
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct wl_list                 outputs;

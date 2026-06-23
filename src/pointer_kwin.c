@@ -29,6 +29,17 @@ struct kwin_ei_state {
     bool                  device_resumed;
     bool                  pong_received;
     bool                  failed;
+    // Set once we have tried (and failed) to connect, so we don't re-attempt --
+    // and re-prompt the user -- on every keystroke.
+    bool connect_failed;
+    // Monotonically increasing sequence number for ei_device_start_emulating(),
+    // as required by libei when the session is reused across multiple moves.
+    uint32_t sequence;
+    // Diagnostic: how many devices KWin offered us. If this is >1 the naive
+    // "keep the last device added/resumed" logic below may have kept the wrong
+    // one. Temporary instrumentation while investigating the unreliable-click
+    // issue (PR #97); downgrade to LOG_DEBUG or remove before merge.
+    int device_count;
 };
 
 static void drain_events(struct kwin_ei_state *s) {
@@ -44,6 +55,18 @@ static void drain_events(struct kwin_ei_state *s) {
             break;
         case EI_EVENT_DEVICE_ADDED:
             s->device = ei_event_get_device(e);
+            s->device_count++;
+            LOG_INFO(
+                "EIS device #%d added (ptr_abs=%d, button=%d, ptr_rel=%d, "
+                "keyboard=%d)",
+                s->device_count,
+                ei_device_has_capability(
+                    s->device, EI_DEVICE_CAP_POINTER_ABSOLUTE
+                ),
+                ei_device_has_capability(s->device, EI_DEVICE_CAP_BUTTON),
+                ei_device_has_capability(s->device, EI_DEVICE_CAP_POINTER),
+                ei_device_has_capability(s->device, EI_DEVICE_CAP_KEYBOARD)
+            );
             break;
         case EI_EVENT_DEVICE_RESUMED:
             s->device         = ei_event_get_device(e);
@@ -89,6 +112,10 @@ static bool pump_until_resumed(struct kwin_ei_state *s) {
 // until the pong (or a disconnect, or the 2s timeout) is observed, then return
 // so the caller can ei_unref(). On timeout we just proceed; we never hang.
 static void flush_until_pong(struct kwin_ei_state *s) {
+    // Reset so this can be called more than once per connection: each call
+    // waits for the pong matching the ping it just sent, not a stale one.
+    s->pong_received = false;
+
     struct ei_ping *ping = ei_new_ping(s->ei);
     if (ping == NULL) {
         return;
@@ -138,32 +165,46 @@ static struct ei_device *kwin_connect_device(struct kwin_ei_state *s) {
     return s->device;
 }
 
-bool pointer_kwin_available(struct state *state) {
-    (void)state;
-    struct eis_connection conn;
-    if (!eis_dbus_connect(&conn)) {
-        return false;
+// Lazily open the EIS session and cache it on the state so the same libei
+// device is reused for every pointer move instead of reconnecting (and making
+// KWin build/tear down a virtual device) on every keystroke. Returns the ready
+// session, or NULL if it could not be established -- in which case the failure
+// is remembered so we don't retry, and re-prompt, on subsequent moves.
+static struct kwin_ei_state *kwin_ensure_connected(struct state *state) {
+    if (state->pointer_kwin != NULL) {
+        struct kwin_ei_state *s = state->pointer_kwin;
+        return (s->connect_failed || s->failed || s->device == NULL) ? NULL : s;
     }
-    close(conn.fd);
-    eis_dbus_disconnect(&conn);
-    return true;
+
+    struct kwin_ei_state *s = calloc(1, sizeof(*s));
+    if (s == NULL) {
+        return NULL;
+    }
+    state->pointer_kwin = s;
+
+    if (kwin_connect_device(s) == NULL) {
+        if (s->ei != NULL) {
+            ei_unref(s->ei);
+            s->ei = NULL;
+        }
+        eis_dbus_disconnect(&s->conn);
+        s->connect_failed = true;
+        return NULL;
+    }
+    return s;
 }
 
 void pointer_kwin_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 ) {
-    int32_t gx = state->current_output->x + (int32_t)x;
-    int32_t gy = state->current_output->y + (int32_t)y;
-
-    struct kwin_ei_state s      = {0};
-    struct ei_device    *device = kwin_connect_device(&s);
-    if (device == NULL) {
-        if (s.ei != NULL) {
-            ei_unref(s.ei);
-        }
-        eis_dbus_disconnect(&s.conn);
+    struct kwin_ei_state *s = kwin_ensure_connected(state);
+    if (s == NULL) {
         return;
     }
+    struct ei_device *device = s->device;
+
+    int32_t gx = state->current_output->x + (int32_t)x;
+    int32_t gy = state->current_output->y + (int32_t)y;
 
     struct eis_region regions[MAX_REGIONS];
     uint32_t          num_regions = 0;
@@ -188,36 +229,88 @@ void pointer_kwin_move(
         ty = (double)gy;
     }
 
+    // Diagnostic: report the device we ended up using and the coordinates we
+    // are about to inject. If ptr_abs/button are 0, or num_regions is 0 while
+    // the target is outside any region, the motion/click is silently dropped by
+    // the EIS implementation -- a likely cause of "doesn't reliably click".
+    // Temporary instrumentation (PR #97); downgrade/remove before merge.
+    LOG_INFO(
+        "kwin click: devices=%d, chosen ptr_abs=%d button=%d, regions=%d, "
+        "global=(%d,%d) -> mapped=(%.1f,%.1f)%s",
+        s->device_count,
+        ei_device_has_capability(device, EI_DEVICE_CAP_POINTER_ABSOLUTE),
+        ei_device_has_capability(device, EI_DEVICE_CAP_BUTTON), num_regions, gx,
+        gy, tx, ty, num_regions == 0 ? " (no regions!)" : ""
+    );
+
     // A sender must bracket emulated events with start/stop emulating, and
-    // each logical hardware event must be terminated by ei_device_frame().
-    ei_device_start_emulating(device, 1);
+    // each logical hardware event must be terminated by ei_device_frame(). The
+    // sequence number must increase on each start since the session is reused.
+    ei_device_start_emulating(device, ++s->sequence);
 
+    // Inject motion, press and release as separate frames, round-tripping with
+    // the EIS implementation between each step. This mirrors the working
+    // wlr_virtual_pointer path (pointer_wlr.c), which does a wl_display
+    // roundtrip after every event. Without the round-trips KWin receives the
+    // whole motion+press+release burst at once and the press/release share a
+    // near-identical ei_now() timestamp, producing a zero-duration click that
+    // does not reliably register. Each flush_until_pong() forces KWin to
+    // process the preceding frame -- and gives the press/release a real
+    // wall-clock gap -- before the next is sent.
+    uint64_t t_motion = ei_now(s->ei);
     ei_device_pointer_motion_absolute(device, tx, ty);
-    ei_device_frame(device, ei_now(s.ei));
-    ei_dispatch(s.ei);
+    ei_device_frame(device, t_motion);
+    flush_until_pong(s);
 
+    uint64_t t_press = 0, t_release = 0;
     if (click != CLICK_NONE) {
         uint32_t btn = click == CLICK_RIGHT_BTN    ? EIS_BTN_RIGHT
                        : click == CLICK_MIDDLE_BTN ? EIS_BTN_MIDDLE
                                                    : EIS_BTN_LEFT;
+
+        t_press = ei_now(s->ei);
         ei_device_button_button(device, btn, true);
-        ei_device_frame(device, ei_now(s.ei));
+        ei_device_frame(device, t_press);
+        flush_until_pong(s);
+
+        t_release = ei_now(s->ei);
         ei_device_button_button(device, btn, false);
-        ei_device_frame(device, ei_now(s.ei));
-        ei_dispatch(s.ei);
+        ei_device_frame(device, t_release);
+        flush_until_pong(s);
     }
 
+    // Diagnostic: the press/release timestamps and their delta. If the delta is
+    // 0 (or these are equal) the old single-burst path was emitting a
+    // zero-duration click. Temporary instrumentation (PR #97).
+    LOG_INFO(
+        "kwin click: t_motion=%llu t_press=%llu t_release=%llu "
+        "press_to_release=%llu us",
+        (unsigned long long)t_motion, (unsigned long long)t_press,
+        (unsigned long long)t_release,
+        (unsigned long long)(t_release - t_press)
+    );
+
     ei_device_stop_emulating(device);
-    ei_dispatch(s.ei);
+    ei_dispatch(s->ei);
 
-    // Round-trip with the EIS implementation to guarantee the queued frames
-    // (notably the final button-release) are written out before we destroy the
-    // context; ei_unref() otherwise gives no such guarantee.
-    flush_until_pong(&s);
+    // Final round-trip to guarantee the queued frames (notably the final
+    // button-release and stop-emulating) are written out. The session itself is
+    // kept open for reuse and released by pointer_kwin_destroy() at exit.
+    flush_until_pong(s);
+}
 
-    ei_unref(s.ei);
+void pointer_kwin_destroy(struct state *state) {
+    struct kwin_ei_state *s = state->pointer_kwin;
+    if (s == NULL) {
+        return;
+    }
+    if (s->ei != NULL) {
+        ei_unref(s->ei);
+    }
     // Drop the D-Bus connection only now that libei is fully torn down.
-    eis_dbus_disconnect(&s.conn);
+    eis_dbus_disconnect(&s->conn);
+    free(s);
+    state->pointer_kwin = NULL;
 }
 
 #endif

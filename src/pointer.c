@@ -13,10 +13,10 @@ void move_pointer(
     }
 
 #if KWIN_ENABLED
-    if (pointer_kwin_available(state)) {
-        pointer_kwin_move(state, x, y, click);
-        return;
-    }
+    // No wlroots virtual pointer: try the KWin backend. It opens (and caches)
+    // its own EIS session and is a no-op if that is unavailable.
+    pointer_kwin_move(state, x, y, click);
+    return;
 #endif
 
     // No usable pointer backend: nothing to do (e.g. --only-print).

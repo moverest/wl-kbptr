@@ -940,6 +940,10 @@ int main(int argc, char **argv) {
         zwlr_virtual_pointer_manager_v1_destroy(state.wl_virtual_pointer_mgr);
     }
 
+#if KWIN_ENABLED
+    pointer_kwin_destroy(&state);
+#endif
+
     free_seats(&state.seats);
     free_outputs(&state.outputs);
 
