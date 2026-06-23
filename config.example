@@ -58,4 +58,5 @@ button=left
 [mode_drag]
 start_marker_color=#fd0d
 start_marker_size=8
+# Shapes: circle, caret, rectangle
 start_marker_shape=circle

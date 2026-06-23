@@ -304,9 +304,11 @@ static int parse_drag_marker_shape(void *dest, char *value) {
         *out = DRAG_MARKER_CIRCLE;
     } else if (strcmp(value, "caret") == 0) {
         *out = DRAG_MARKER_CARET;
+    } else if (strcmp(value, "rectangle") == 0) {
+        *out = DRAG_MARKER_RECTANGLE;
     } else {
         LOG_ERR(
-            "Invalid drag marker shape '%s'. Should be 'circle' or 'caret'.",
+            "Invalid drag marker shape '%s'. Should be 'circle', 'caret' or 'rectangle'.",
             value
         );
         return 1;

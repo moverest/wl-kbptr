@@ -84,6 +84,7 @@ struct mode_click_config {
 enum drag_marker_shape {
     DRAG_MARKER_CIRCLE,
     DRAG_MARKER_CARET,
+    DRAG_MARKER_RECTANGLE,
 };
 
 struct mode_drag_config {

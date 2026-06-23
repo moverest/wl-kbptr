@@ -182,6 +182,15 @@ void mode_render(struct state *state, cairo_t *cairo) {
         if (shape == DRAG_MARKER_CIRCLE) {
             cairo_arc(cairo, x, y, s, 0, 2 * M_PI);
             cairo_fill(cairo);
+        } else if (shape == DRAG_MARKER_RECTANGLE) {
+            // Rectangle: plain vertical bar
+            double bar_w = s / 4.0 < 1.5 ? 1.5 : s / 4.0;
+            double bar_h = s * 2.0;
+            cairo_set_line_width(cairo, bar_w);
+            cairo_set_line_cap(cairo, CAIRO_LINE_CAP_SQUARE);
+            cairo_move_to(cairo, x, y - bar_h / 2);
+            cairo_line_to(cairo, x, y + bar_h / 2);
+            cairo_stroke(cairo);
         } else {
             // Caret: a vertical bar with serifs, like a text insertion cursor.
             // Bar: width = s/4 (min 1.5), height = s*2, centred on (x, y).
