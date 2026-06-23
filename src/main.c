@@ -623,6 +623,9 @@ static void print_result(struct state *state) {
     case CLICK_RIGHT_BTN:
         click = 'r';
         break;
+    case CLICK_DRAG:
+        click = 'd';
+        break;
     case CLICK_NONE:
         click = 'n';
     }
@@ -633,7 +636,6 @@ static void print_result(struct state *state) {
         state->current_output->y, click
     );
 }
-
 static void print_usage() {
     puts("wl-kbptr [OPTION...]\n");
 
@@ -645,6 +647,7 @@ static void print_usage() {
     puts(" -o, --option        set configuration option");
     puts(" -O, --output        specify display output to use");
     puts(" -p, --only-print    only print, don't move the cursor or click");
+    puts(" -d, --drag          perform a click-and-drag between two selections");
 }
 
 static void print_version() {
@@ -676,7 +679,11 @@ int main(int argc, char **argv) {
         .result               = (struct rect){-1, -1, -1, -1},
         .initial_area         = (struct rect){-1, -1, -1, -1},
         .home_row = (char *[]){"", "", "", "", "", "", "", "", "", "", ""},
-        .click    = CLICK_NONE,
+        .click                = CLICK_NONE,
+        .drag                 = false,
+        .drag_start_x         = 0,
+        .drag_start_y         = 0,
+        .drag_phase           = 0,
     };
 
     config_set_default(&state.config);
@@ -691,6 +698,7 @@ int main(int argc, char **argv) {
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
         {"only-print", no_argument, 0, 'p'},
+        {"drag", no_argument, 0, 'd'},
         {NULL, 0, NULL, 0}
     };
 
@@ -703,7 +711,7 @@ int main(int argc, char **argv) {
     char  *selected_output_name = NULL;
     bool   only_print           = false;
     while ((option_char = getopt_long(
-                argc, argv, "hvr:o:c:O:Rp", long_options, &option_index
+                argc, argv, "hvr:o:c:O:Rpd", long_options, &option_index
             )) != -1) {
         switch (option_char) {
         case 'h':
@@ -751,6 +759,10 @@ int main(int argc, char **argv) {
 
         case 'p':
             only_print = true;
+            break;
+
+        case 'd':
+            state.drag = true;
             break;
 
         default:
@@ -922,10 +934,18 @@ int main(int argc, char **argv) {
     if (state.result.x != -1) {
         print_result(&state);
         if (!only_print) {
-            move_pointer(
-                &state, state.result.x + state.result.w / 2,
-                state.result.y + state.result.h / 2, state.click
-            );
+            if (state.click == CLICK_DRAG) {
+                drag_pointer(
+                    &state, state.drag_start_x, state.drag_start_y,
+                    state.result.x + state.result.w / 2,
+                    state.result.y + state.result.h / 2
+                );
+            } else {
+                move_pointer(
+                    &state, state.result.x + state.result.w / 2,
+                    state.result.y + state.result.h / 2, state.click
+                );
+            }
         }
     } else {
         status_code = state.config.general.cancellation_status_code;

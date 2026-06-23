@@ -11,7 +11,7 @@ To enable to select a target and click, it has four different modes:
 - [`tile`](#tile-mode) &mdash; which uses a grid to select areas,
 - [`bisect`](#bisect-mode) &mdash; which enables to bisect an area,
 - [`split`](#split-mode) &mdash; which enables to successively split an area,
-- and [`click`](#click-mode) &mdash; which triggers a click in the middle of an area.
+- [`click`](#click-mode) &mdash; which triggers a click in the middle of an area.
 
 These are set with the `modes` configuration field and can be chained, e.g. `wl-kbptr -o modes=tile,bisect`.
 
@@ -51,6 +51,23 @@ Just like the `bisect` mode, a left, right and middle click can be made by press
 ### Click mode
 
 The `click` mode simply triggers a click in the middle of the selection area.
+
+## Drag flag
+
+The `--drag` flag (or `-d`) changes the action from a single click to a click-and-drag between two selected positions. It is designed to be used with any mode chain and requires **two selections**:
+
+1. **Start**: the first selection's left-center is stored as the drag start point. A marker is drawn at that position and the selection resets so you can pick again.
+2. **End**: the second selection's right-center becomes the drag end point. The pointer then presses and holds the left button at the start, moves to the end, and releases.
+
+This makes it useful for selecting text (start at word/line beginning, end at word/line end) or dragging UI elements.
+
+```
+wl-kbptr -o modes=tile,click --drag
+wl-kbptr -o modes=floating,click --drag
+wl-kbptr -o modes=bisect,click --drag
+wl-kbptr -o modes=split,click --drag
+wl-kbptr -o modes=tile,bisect,click --drag
+```
 
 ## Supported compositors
 

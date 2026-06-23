@@ -3,7 +3,9 @@
 #include "mode.h"
 
 #include "log.h"
+#include "utils_cairo.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -64,6 +66,14 @@ int load_modes(struct state *state, char *modes) {
     return 0;
 }
 
+static bool chain_includes_floating(struct state *state) {
+    for (int i = 0; i < MAX_NUM_MODES; i++) {
+        if (state->mode_interfaces[i] == NULL) break;
+        if (strcmp(state->mode_interfaces[i]->name, "floating") == 0) return true;
+    }
+    return false;
+}
+
 void enter_next_mode(struct state *state, struct rect area) {
     if (has_last_mode_returned(state)) {
         return;
@@ -72,7 +82,31 @@ void enter_next_mode(struct state *state, struct rect area) {
     state->current_mode += 1;
 
     if (has_last_mode_returned(state)) {
-        memcpy(&state->result, &area, sizeof(struct rect));
+        if (state->drag && state->drag_phase == 0) {
+            bool floating       = chain_includes_floating(state);
+            state->drag_start_x = floating ? area.x : area.x + area.w / 2;
+            state->drag_start_y = area.y + area.h / 2;
+            state->drag_phase   = 1;
+            for (int i = 0; i < state->current_mode; i++) {
+                state->mode_interfaces[i]->restart(
+                    state, state->mode_states[i]
+                );
+            }
+            state->current_mode = 0;
+        } else if (state->drag && state->drag_phase == 1) {
+            bool floating     = chain_includes_floating(state);
+            state->drag_phase = 0;
+            state->click      = CLICK_DRAG;
+            struct rect end_point = {
+                .x = floating ? area.x + area.w - 1 : area.x + area.w / 2,
+                .y = area.y + area.h / 2,
+                .w = 1,
+                .h = 1,
+            };
+            memcpy(&state->result, &end_point, sizeof(struct rect));
+        } else {
+            memcpy(&state->result, &area, sizeof(struct rect));
+        }
         return;
     }
 
@@ -132,7 +166,51 @@ void mode_render(struct state *state, cairo_t *cairo) {
         return;
     }
 
-    return state->mode_interfaces[state->current_mode]->render(
+    state->mode_interfaces[state->current_mode]->render(
         state, state->mode_states[state->current_mode], cairo
     );
+
+    if (state->drag_phase == 1) {
+        double                  s      = state->config.mode_drag.start_marker_size;
+        enum drag_marker_shape  shape  = state->config.mode_drag.start_marker_shape;
+        double                  x      = state->drag_start_x;
+        double                  y      = state->drag_start_y;
+
+        cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+        cairo_set_source_u32(cairo, state->config.mode_drag.start_marker_color);
+
+        if (shape == DRAG_MARKER_CIRCLE) {
+            cairo_arc(cairo, x, y, s, 0, 2 * M_PI);
+            cairo_fill(cairo);
+        } else if (shape == DRAG_MARKER_RECTANGLE) {
+            // Rectangle: plain vertical bar
+            double bar_w = s / 4.0 < 1.5 ? 1.5 : s / 4.0;
+            double bar_h = s * 2.0;
+            cairo_set_line_width(cairo, bar_w);
+            cairo_set_line_cap(cairo, CAIRO_LINE_CAP_SQUARE);
+            cairo_move_to(cairo, x, y - bar_h / 2);
+            cairo_line_to(cairo, x, y + bar_h / 2);
+            cairo_stroke(cairo);
+        } else {
+            // Caret: a vertical bar with serifs, like a text insertion cursor.
+            // Bar: width = s/4 (min 1.5), height = s*2, centred on (x, y).
+            double bar_w = s / 4.0 < 1.5 ? 1.5 : s / 4.0;
+            double bar_h = s * 2.0;
+            double serif_w = s * 0.75;
+            cairo_set_line_width(cairo, bar_w);
+            cairo_set_line_cap(cairo, CAIRO_LINE_CAP_SQUARE);
+            // Vertical stroke
+            cairo_move_to(cairo, x, y - bar_h / 2);
+            cairo_line_to(cairo, x, y + bar_h / 2);
+            cairo_stroke(cairo);
+            // Top serif
+            cairo_move_to(cairo, x - serif_w / 2, y - bar_h / 2);
+            cairo_line_to(cairo, x + serif_w / 2, y - bar_h / 2);
+            cairo_stroke(cairo);
+            // Bottom serif
+            cairo_move_to(cairo, x - serif_w / 2, y + bar_h / 2);
+            cairo_line_to(cairo, x + serif_w / 2, y + bar_h / 2);
+            cairo_stroke(cairo);
+        }
+    }
 }
