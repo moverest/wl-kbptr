@@ -364,11 +364,13 @@ static struct section_def section_defs[] = {
         "General configuration",
         G_FIELD(
             home_row_keys, "", parse_home_row_keys, free_home_row_keys,
-            "Home row keys"
+            "A string of exactly 11 characters, each representing a key.\n"
+            "The first 8 will be used to select sub-areas in bisect mode.\n"
+            "The last 3 will be used as left, right and middle click respectively."
         ),
         G_FIELD(
             modes, "tile,bisect", parse_str, free_str,
-            "Modes to use; will be chained"
+            "Modes (tile, bisect, split or float) to use; will be chained."
         ),
         G_FIELD(
             cancellation_status_code, "0", parse_uint8, noop,
@@ -454,7 +456,6 @@ static struct section_def section_defs[] = {
         )
     ),
     SECTION(
-        // TODO[glowingscewdriver]: Explain "even" and "odd" areas
         mode_bisect,
         "Configuration for bisect mode",
         MB_FIELD(
@@ -471,9 +472,9 @@ static struct section_def section_defs[] = {
             "Font family for labels"
         ),
         MB_FIELD(
-            // TODO[glowingscrewdriver]: What does this actually do?
             label_padding, "12", parse_double, noop,
-            "Padding for labels"
+            "Spacing between a selectable region and its label.\n"
+            "Applicable when the region is smaller than the label."
         ),
         MB_FIELD(
             pointer_size, "20", parse_double, noop,
@@ -489,19 +490,21 @@ static struct section_def section_defs[] = {
         ),
         MB_FIELD(
             even_area_bg_color, "#0304", parse_color, noop,
-            "Background color for even areas"
+            "Background color for even areas.\n"
+            "Odd/even areas are selectable areas with odd/even indices,\n"
+            "when counting row-wise (or column-wise), starting from 0."
         ),
         MB_FIELD(
             even_area_border_color, "#0408", parse_color, noop,
-            "Border color for even areas"
+            "Border color for even areas (see `even_area_bg_color`)"
         ),
         MB_FIELD(
             odd_area_bg_color, "#0034", parse_color, noop,
-            "Background color for odd areas"
+            "Background color for odd areas (see `even_area_bg_color`)"
         ),
         MB_FIELD(
             odd_area_border_color, "#0048", parse_color, noop,
-            "Border color for odd areas"
+            "Border color for odd areas (see `even_area_bg_color`)"
         ),
         MB_FIELD(
             history_border_color, "#3339", parse_color, noop,
@@ -520,8 +523,6 @@ static struct section_def section_defs[] = {
             "Pointer color"
         ),
         MS_FIELD(
-            // TODO[glowingscrewdriver] why is this not named
-            // `unselectable_bg_color`?
             bg_color, "#2226", parse_color, noop,
             "Background color for unselectable area"
         ),
