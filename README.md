@@ -6,7 +6,7 @@ See [Supported compositors](#supported-compositors) section for compatibility.
 
 ## Modes
 
-To enable to select a target and click, it has four different modes:
+To enable selecting a target and click, it has four different modes:
 - [`floating`](#floating-mode) &mdash; which uses arbitrary areas either given by the user or detected,
 - [`tile`](#tile-mode) &mdash; which uses a grid to select areas,
 - [`bisect`](#bisect-mode) &mdash; which enables to bisect an area,
@@ -108,7 +108,7 @@ apk add wl-kbptr
 If you are using Fedora, you can install the [`wl-kbptr` package](https://src.fedoraproject.org/rpms/wl-kbptr) which is available in the official repository.
 
 ```bash
-dnf in wl-kbptr
+dnf install wl-kbptr
 ```
 
 ### From sources
