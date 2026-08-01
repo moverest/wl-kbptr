@@ -406,7 +406,9 @@ static struct section_def section_defs[] = {
         ),
         MT_FIELD(
             label_font_size, "8 50% 100", parse_relative_font_size, noop,
-            "Font size for labels"
+            "Font size for labels, specified as `<min> <pct>% <max>`.\n"
+            "The resulting font size is a percentage of the region height\n"
+            "(specified by <pct>), bounded by <min> and <max>."
         ),
         MT_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str,
@@ -448,7 +450,8 @@ static struct section_def section_defs[] = {
         ),
         MF_FIELD(
             label_font_size, "12 50% 100", parse_relative_font_size, noop,
-            "Font size for labels"
+            "Font size for labels.\n"
+            "See mode_tile.label_font_size for a detailed description."
         ),
         MF_FIELD(
             label_symbols, "abcdefghijklmnopqrstuvwxyz", parse_str, free_str,
@@ -465,7 +468,7 @@ static struct section_def section_defs[] = {
         // TODO: we should set minimums for numbers.
         MB_FIELD(
             label_font_size, "20", parse_double, noop,
-            "Font size for labels"
+            "Font size for labels. Note that a lower bound is applied internally."
         ),
         MB_FIELD(
             label_font_family, "sans-serif", parse_str, free_str,
