@@ -21,7 +21,7 @@ struct mode_interface {
 extern struct mode_interface *mode_interfaces[];
 
 /**
- * Load modes from given coma seperated list of mode names.
+ * Load modes from given comma separated list of mode names.
  * Returns 0 on success.
  */
 int load_modes(struct state *, char *);
