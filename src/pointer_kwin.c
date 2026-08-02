@@ -268,10 +268,23 @@ void pointer_kwin_move(
                        : click == CLICK_MIDDLE_BTN ? EIS_BTN_MIDDLE
                                                    : EIS_BTN_LEFT;
 
+        // Sleep before the press and again before the release. The
+        // round-trips above order the frames but do not advance the ei_now()
+        // clock fast enough to separate them: press and release still go out
+        // only tens of microseconds apart, carrying the same-millisecond
+        // ei_now() timestamp, i.e. a zero-duration click. Qt accepts that, but
+        // Chromium-based Wayland clients discard it, so the click is silently
+        // dropped there. A gap on the order of tens of milliseconds is what
+        // real hardware produces and is enough for every toolkit to see a
+        // distinct press and release.
+        usleep(60000);
+
         t_press = ei_now(s->ei);
         ei_device_button_button(device, btn, true);
         ei_device_frame(device, t_press);
         flush_until_pong(s);
+
+        usleep(60000);
 
         t_release = ei_now(s->ei);
         ei_device_button_button(device, btn, false);
