@@ -6,6 +6,10 @@
 
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+// OpenCV 5 moved `cv::boundingRect` out of `imgproc.hpp`.
+#if __has_include(<opencv2/geometry/2d.hpp>)
+#include <opencv2/geometry/2d.hpp>
+#endif
 #include <pixman.h>
 #include <stdint.h>
 #include <stdlib.h>
