@@ -219,6 +219,15 @@ void pointer_kwin_move(
         tx = (double)regions[p.region_index].x + p.x;
         ty = (double)regions[p.region_index].y + p.y;
     } else {
+        // No region covers the target: send the raw global coordinates and let
+        // the EIS implementation decide. This is also where a layout with more
+        // than MAX_REGIONS regions would land, so trace it -- the pointer may
+        // end up somewhere unexpected.
+        LOG_DEBUG(
+            "No EIS region contains (%d,%d) among %u region(s); sending global "
+            "coordinates.",
+            gx, gy, num_regions
+        );
         tx = (double)gx;
         ty = (double)gy;
     }

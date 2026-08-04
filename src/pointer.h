@@ -8,8 +8,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Public seam used by main.c. Selects a backend at call time and performs the
-// absolute pointer move (plus click, taken from state->click).
+// Public seam used by main.c and the interactive modes. Selects a backend at
+// call time and performs the absolute pointer move, followed by `click` unless
+// that is CLICK_NONE (the bisect/split modes pass CLICK_NONE to track the
+// cursor while narrowing down a target).
 void move_pointer(
     struct state *state, uint32_t x, uint32_t y, enum click click
 );

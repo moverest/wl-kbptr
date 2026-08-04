@@ -58,7 +58,11 @@ static bool read_full(int fd, uint8_t *buf, size_t size) {
     return true;
 }
 
-// Reads width/height/stride/format from the a{sv} reply.
+// Reads width/height/stride/format from the a{sv} reply. Returns false if any
+// of the four is missing or could not be parsed; the caller then treats the
+// reply as unusable. Bailing out on a failed read matters: sd_bus leaves the
+// destination untouched on failure, so carrying on would hand an
+// uninitialized dimension to the buffer arithmetic below.
 static bool read_metadata(
     sd_bus_message *reply, uint32_t *width, uint32_t *height, uint32_t *stride,
     uint32_t *qformat
@@ -70,29 +74,37 @@ static bool read_metadata(
     }
     while (sd_bus_message_enter_container(reply, 'e', "sv") > 0) {
         const char *key;
-        sd_bus_message_read(reply, "s", &key);
-        uint32_t value;
+        if (sd_bus_message_read(reply, "s", &key) < 0) {
+            return false;
+        }
+
         // All four fields we need are u (uint32); skip anything else.
+        uint32_t *dest = NULL;
         if (strcmp(key, "width") == 0) {
-            sd_bus_message_read(reply, "v", "u", &value);
-            *width = value;
+            dest   = width;
             have_w = true;
         } else if (strcmp(key, "height") == 0) {
-            sd_bus_message_read(reply, "v", "u", &value);
-            *height = value;
-            have_h  = true;
+            dest   = height;
+            have_h = true;
         } else if (strcmp(key, "stride") == 0) {
-            sd_bus_message_read(reply, "v", "u", &value);
-            *stride = value;
-            have_s  = true;
+            dest   = stride;
+            have_s = true;
         } else if (strcmp(key, "format") == 0) {
-            sd_bus_message_read(reply, "v", "u", &value);
-            *qformat = value;
-            have_f   = true;
-        } else {
-            sd_bus_message_skip(reply, "v");
+            dest   = qformat;
+            have_f = true;
         }
-        sd_bus_message_exit_container(reply);
+
+        if (dest != NULL) {
+            if (sd_bus_message_read(reply, "v", "u", dest) < 0) {
+                return false;
+            }
+        } else if (sd_bus_message_skip(reply, "v") < 0) {
+            return false;
+        }
+
+        if (sd_bus_message_exit_container(reply) < 0) {
+            return false;
+        }
     }
     sd_bus_message_exit_container(reply);
     return have_w && have_h && have_s && have_f;
@@ -156,6 +168,17 @@ query_screenshot_kwin(struct state *state, struct rect region) {
     enum wl_shm_format wl_format;
     if (!qimage_to_wl_shm(qformat, &wl_format)) {
         LOG_ERR("Unsupported screenshot QImage format %u.", qformat);
+        goto out;
+    }
+
+    // Every format we accept is 4 bytes per pixel, so a stride that cannot hold
+    // one row (or a zero-sized image) means the geometry is not self-consistent
+    // and the size arithmetic below would not describe the pixel data.
+    if (width == 0 || height == 0 || (uint64_t)stride < (uint64_t)width * 4) {
+        LOG_ERR(
+            "Implausible screenshot geometry: %ux%u, stride %u.", width, height,
+            stride
+        );
         goto out;
     }
 
