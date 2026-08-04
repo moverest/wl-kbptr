@@ -27,7 +27,7 @@ The areas can also be automatically detected with `mode_floating.source` configu
 
 This requires the `wl-kbptr` binary to be built with the `opencv` feature and the compositor to support the [`wlr-screencopy-unstable-v1`](https://wayland.app/protocols/wlr-screencopy-unstable-v1) protocol &mdash; see the [supported compositors](#supported-compositors) section and [build instructions](#from-sources) for details. Whilst it doesn't noticeably change the size of the program itself, OpenCV is a 100 MB+ dependency which is not ideal if you want a very small system which is why this is an optional feature.
 
-On KWin (which doesn't support `wlr-screencopy-unstable-v1`) the screen is instead captured through KWin's [`org.kde.KWin.ScreenShot2`](https://invent.kde.org/plasma/kwin/-/blob/master/src/plugins/screenshot/org.kde.KWin.ScreenShot2.xml) D-Bus interface. This needs a binary built with **both** the `opencv` and `kwin` features, and &mdash; because `ScreenShot2` is a restricted interface &mdash; the program must be **installed**: the bundled desktop file carries the required `X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2` entry, so running from the build tree is not authorized to capture.
+On KWin (which doesn't support `wlr-screencopy-unstable-v1`) the screen is captured through KWin's [`org.kde.KWin.ScreenShot2`](https://invent.kde.org/plasma/kwin/-/blob/master/src/plugins/screenshot/org.kde.KWin.ScreenShot2.xml) D-Bus interface instead. This needs a binary built with both the `opencv` and `kwin` features. Because `ScreenShot2` is a restricted interface, the program also has to be installed: the bundled desktop file carries the required `X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2` entry, so running from the build tree is not authorized to capture.
 
 Most distributions will package the program with the option enabled. If not, they will usually provide two packages. You can check if the binary you have has been built with it with `wl-kbptr --version` &mdash; it should print `opencv` if supported.
 
@@ -140,7 +140,7 @@ meson compile -C build
 
 This requires `libei` and an sd-bus implementation (`libsystemd`, or `basu` on non-systemd systems). KWin moves the pointer through its EIS RemoteDesktop interface; the `wlr-virtual-pointer` protocol is not used on KWin.
 
-To also get target auto-detection on KWin, enable both features (`-Dopencv=enabled -Dkwin=enabled`) and **install** the program (`meson install`). KWin only authorizes the `org.kde.KWin.ScreenShot2` capture for an installed binary whose desktop file declares the allow-list entry, so auto-detection does not work when running from the build tree.
+For target auto-detection on KWin, enable both features (`-Dopencv=enabled -Dkwin=enabled`) and install the program (`meson install`). KWin only authorizes the `org.kde.KWin.ScreenShot2` capture for an installed binary whose desktop file declares the allow-list entry, so auto-detection does not work from the build tree.
 
 Then install with:
 
@@ -222,6 +222,14 @@ submap = reset
 # If you do not use cursor timeout or cursor:hide_on_key_press, you can delete its respective calls.
 bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword cursor:hide_on_key_press false; hyprctl dispatch submap cursor
 ```
+
+### KWin (KDE Plasma)
+
+Open *System Settings → Keyboard → Shortcuts*, click **Add New → Command or Script…**, and enter `wl-kbptr` as the command (no arguments needed; `~/.config/wl-kbptr/config` is loaded automatically if present). Then click the new entry and assign it a key combination.
+
+No desktop file or special setup is required for the default `tile,bisect` modes, or for `floating` mode with `source=stdin`: pointer movement and clicks go through libei / KWin's EIS interface, which needs no allow-listing.
+
+The installed `wl-kbptr.desktop` (with the `X-KDE-DBUS-Restricted-Interfaces` entry) is only needed for target auto-detection (`floating` + `source=detect`), because KWin's `org.kde.KWin.ScreenShot2` is a restricted interface that only authorizes an installed binary. See the [floating mode auto-detection](#auto-detection) notes for the build flags.
 
 ## Configuration
 
