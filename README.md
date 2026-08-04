@@ -73,7 +73,7 @@ Here are the compositors with which it has been tested:
 | [dwl](https://codeberg.org/dwl/dwl) | ✅ | - |
 | [labwc](https://labwc.github.io) | ✅ | - |
 | [Wayfire](https://wayfire.org) | ✅ | The pointer doesn't move to the right location with multiple display outputs. See [#56](https://github.com/moverest/wl-kbptr/issues/56#issuecomment-3087922040). |
-| [KWin](https://github.com/KDE/kwin) | ✅ | Cursor movement and clicks work natively when built with the `kwin` feature (via libei / KWin's EIS RemoteDesktop D-Bus interface). Target auto-detection (`floating` + `detect`) also works when built with both the `kwin` and `opencv` features and the program is installed (it captures via KWin's `org.kde.KWin.ScreenShot2` interface, which requires the desktop-file allow-list entry). Alternatively, `--print-only` with `ydotool` or similar still works. |
+| [KWin](https://github.com/KDE/kwin) | ✅ | Cursor movement and clicks work natively when built with the `kwin` feature (via libei / KWin's EIS RemoteDesktop D-Bus interface). Target auto-detection (`floating` + `detect`) also works when built with both the `kwin` and `opencv` features and the program is installed (it captures via KWin's `org.kde.KWin.ScreenShot2` interface, which requires the desktop-file allow-list entry). Alternatively, `--only-print` with `ydotool` or similar still works. |
 | [Mutter](https://mutter.gnome.org) | ❌ | The compositor doesn't support any of the required protocols. |
 
 ## Installation

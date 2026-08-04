@@ -21,6 +21,15 @@
 
 #define MAX_REGIONS 16
 
+// Gap injected before the press and again before the release of a click. The
+// EIS round-trips order the frames but do not advance ei_now() far enough to
+// separate them, so without this pause press and release carry the same
+// millisecond timestamp, i.e. a zero-duration click. Qt accepts that, but
+// Chromium-based Wayland clients discard it. A gap on the order of tens of
+// milliseconds matches real hardware and is seen as a distinct press/release by
+// every toolkit.
+#define KWIN_CLICK_GAP_US 60000
+
 struct kwin_ei_state {
     struct eis_connection conn;
     struct ei            *ei;
@@ -35,11 +44,6 @@ struct kwin_ei_state {
     // Monotonically increasing sequence number for ei_device_start_emulating(),
     // as required by libei when the session is reused across multiple moves.
     uint32_t sequence;
-    // Diagnostic: how many devices KWin offered us. If this is >1 the naive
-    // "keep the last device added/resumed" logic below may have kept the wrong
-    // one. Temporary instrumentation while investigating the unreliable-click
-    // issue (PR #97); downgrade to LOG_DEBUG or remove before merge.
-    int device_count;
 };
 
 static void drain_events(struct kwin_ei_state *s) {
@@ -54,19 +58,9 @@ static void drain_events(struct kwin_ei_state *s) {
             );
             break;
         case EI_EVENT_DEVICE_ADDED:
+            // KWin may offer more than one device; the one that later resumes
+            // (EI_EVENT_DEVICE_RESUMED) is the one we ultimately emulate on.
             s->device = ei_event_get_device(e);
-            s->device_count++;
-            LOG_INFO(
-                "EIS device #%d added (ptr_abs=%d, button=%d, ptr_rel=%d, "
-                "keyboard=%d)",
-                s->device_count,
-                ei_device_has_capability(
-                    s->device, EI_DEVICE_CAP_POINTER_ABSOLUTE
-                ),
-                ei_device_has_capability(s->device, EI_DEVICE_CAP_BUTTON),
-                ei_device_has_capability(s->device, EI_DEVICE_CAP_POINTER),
-                ei_device_has_capability(s->device, EI_DEVICE_CAP_KEYBOARD)
-            );
             break;
         case EI_EVENT_DEVICE_RESUMED:
             s->device         = ei_event_get_device(e);
@@ -229,20 +223,6 @@ void pointer_kwin_move(
         ty = (double)gy;
     }
 
-    // Diagnostic: report the device we ended up using and the coordinates we
-    // are about to inject. If ptr_abs/button are 0, or num_regions is 0 while
-    // the target is outside any region, the motion/click is silently dropped by
-    // the EIS implementation -- a likely cause of "doesn't reliably click".
-    // Temporary instrumentation (PR #97); downgrade/remove before merge.
-    LOG_INFO(
-        "kwin click: devices=%d, chosen ptr_abs=%d button=%d, regions=%d, "
-        "global=(%d,%d) -> mapped=(%.1f,%.1f)%s",
-        s->device_count,
-        ei_device_has_capability(device, EI_DEVICE_CAP_POINTER_ABSOLUTE),
-        ei_device_has_capability(device, EI_DEVICE_CAP_BUTTON), num_regions, gx,
-        gy, tx, ty, num_regions == 0 ? " (no regions!)" : ""
-    );
-
     // A sender must bracket emulated events with start/stop emulating, and
     // each logical hardware event must be terminated by ei_device_frame(). The
     // sequence number must increase on each start since the session is reused.
@@ -262,46 +242,27 @@ void pointer_kwin_move(
     ei_device_frame(device, t_motion);
     flush_until_pong(s);
 
-    uint64_t t_press = 0, t_release = 0;
     if (click != CLICK_NONE) {
         uint32_t btn = click == CLICK_RIGHT_BTN    ? EIS_BTN_RIGHT
                        : click == CLICK_MIDDLE_BTN ? EIS_BTN_MIDDLE
                                                    : EIS_BTN_LEFT;
 
-        // Sleep before the press and again before the release. The
-        // round-trips above order the frames but do not advance the ei_now()
-        // clock fast enough to separate them: press and release still go out
-        // only tens of microseconds apart, carrying the same-millisecond
-        // ei_now() timestamp, i.e. a zero-duration click. Qt accepts that, but
-        // Chromium-based Wayland clients discard it, so the click is silently
-        // dropped there. A gap on the order of tens of milliseconds is what
-        // real hardware produces and is enough for every toolkit to see a
-        // distinct press and release.
-        usleep(60000);
+        // Separate the press and release in wall-clock time so they are not
+        // seen as a zero-duration click (see KWIN_CLICK_GAP_US).
+        usleep(KWIN_CLICK_GAP_US);
 
-        t_press = ei_now(s->ei);
+        uint64_t t_press = ei_now(s->ei);
         ei_device_button_button(device, btn, true);
         ei_device_frame(device, t_press);
         flush_until_pong(s);
 
-        usleep(60000);
+        usleep(KWIN_CLICK_GAP_US);
 
-        t_release = ei_now(s->ei);
+        uint64_t t_release = ei_now(s->ei);
         ei_device_button_button(device, btn, false);
         ei_device_frame(device, t_release);
         flush_until_pong(s);
     }
-
-    // Diagnostic: the press/release timestamps and their delta. If the delta is
-    // 0 (or these are equal) the old single-burst path was emitting a
-    // zero-duration click. Temporary instrumentation (PR #97).
-    LOG_INFO(
-        "kwin click: t_motion=%llu t_press=%llu t_release=%llu "
-        "press_to_release=%llu us",
-        (unsigned long long)t_motion, (unsigned long long)t_press,
-        (unsigned long long)t_release,
-        (unsigned long long)(t_release - t_press)
-    );
 
     ei_device_stop_emulating(device);
     ei_dispatch(s->ei);

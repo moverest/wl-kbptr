@@ -170,7 +170,12 @@ query_screenshot_kwin(struct state *state, struct rect region) {
         goto out;
     }
 
-    result            = malloc(sizeof(*result));
+    result = malloc(sizeof(*result));
+    if (result == NULL) {
+        LOG_ERR("Failed to allocate screenshot buffer.");
+        free(data);
+        goto out;
+    }
     result->wl_buffer = NULL; // malloc'd, not SHM
     result->data      = data;
     result->format    = wl_format;
