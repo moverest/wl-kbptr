@@ -422,7 +422,7 @@ void print_default_config() {
     puts("# wl-kbptr can be configured with a configuration file.");
     puts("# The file location can be passed with the -c parameter.");
     puts("# Othewise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will");
-    puts("# be loaded if it exits. Below is the default configuration.");
+    puts("# be loaded if it exists. Below is the default configuration.");
 
     for (int i = 0; i < sizeof(section_defs) / sizeof(section_defs[0]); i++) {
         struct section_def *section_def = &section_defs[i];
