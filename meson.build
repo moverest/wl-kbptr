@@ -97,8 +97,6 @@ endif
 
 if use_kwin and use_opencv
   sources += ['src/screenshot_kwin.c']
-  # screenshot_kwin.c drains the ScreenShot2 pipe on a reader thread.
-  dependencies += [dependency('threads')]
 endif
 
 executable(

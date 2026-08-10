@@ -11,7 +11,6 @@
 
 #include <errno.h>
 #include <poll.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,11 +20,6 @@
 #define QIMAGE_FORMAT_RGB32                4
 #define QIMAGE_FORMAT_ARGB32               5
 #define QIMAGE_FORMAT_ARGB32_PREMULTIPLIED 6
-
-// Initial reader buffer; doubled as needed. The image size is only known from
-// the D-Bus reply, which may arrive after the pixels, so the reader grows a
-// buffer until EOF rather than allocating up front.
-#define KWIN_CAPTURE_INITIAL_CAP (8u << 20) // 8 MiB
 
 // Upper bound on how long a single read may stall. Bounds the worst case if
 // KWin never finishes writing, so a misbehaving compositor cannot hang us.
@@ -43,68 +37,6 @@ static bool qimage_to_wl_shm(uint32_t qformat, enum wl_shm_format *out) {
     default:
         return false;
     }
-}
-
-// State handed to the reader thread. Only the reader touches these fields while
-// it runs; the main thread reads them exclusively after pthread_join(), which
-// establishes the necessary happens-before ordering -- so no lock is needed.
-struct pipe_reader {
-    int      fd;   // read end of the pipe (owned by the caller, not the reader)
-    uint8_t *data; // grown buffer of the bytes read so far
-    size_t   len;  // valid bytes in `data`
-    size_t   cap;  // allocated capacity of `data`
-    bool     failed;
-};
-
-// Reads the pipe until EOF (KWin closes the write end when the image is fully
-// written) into a growing buffer. Never writes to the pipe, so it cannot raise
-// SIGPIPE; a poll() timeout bounds the worst case.
-static void *pipe_reader_thread(void *arg) {
-    struct pipe_reader *r = arg;
-    for (;;) {
-        if (r->len == r->cap) {
-            size_t   ncap = r->cap ? r->cap * 2 : KWIN_CAPTURE_INITIAL_CAP;
-            uint8_t *nd   = realloc(r->data, ncap);
-            if (nd == NULL) {
-                LOG_ERR("Failed to grow screenshot buffer.");
-                r->failed = true;
-                break;
-            }
-            r->data = nd;
-            r->cap  = ncap;
-        }
-
-        struct pollfd pfd = {.fd = r->fd, .events = POLLIN};
-        int           pr  = poll(&pfd, 1, KWIN_CAPTURE_READ_TIMEOUT_MS);
-        if (pr < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            LOG_ERR("poll() on screenshot pipe failed: %s", strerror(errno));
-            r->failed = true;
-            break;
-        }
-        if (pr == 0) {
-            LOG_ERR("Timed out reading the screenshot pipe.");
-            r->failed = true;
-            break;
-        }
-
-        ssize_t n = read(r->fd, r->data + r->len, r->cap - r->len);
-        if (n < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            LOG_ERR("Failed reading screenshot pipe: %s", strerror(errno));
-            r->failed = true;
-            break;
-        }
-        if (n == 0) {
-            break; // EOF: all write ends are closed, image complete.
-        }
-        r->len += (size_t)n;
-    }
-    return NULL;
 }
 
 // Reads width/height/stride/format from the a{sv} reply. Returns false if any
@@ -174,10 +106,7 @@ query_screenshot_kwin(struct state *state, struct rect region) {
     sd_bus_error          error = SD_BUS_ERROR_NULL;
     sd_bus_message       *m = NULL, *reply = NULL;
     struct scrcpy_buffer *result = NULL;
-    struct pipe_reader    rd     = {0};
-    pthread_t             tid;
-    bool                  reader_running = false;
-    int                   call_rc        = 0;
+    uint8_t              *data   = NULL;
 
     int r = sd_bus_open_user(&bus);
     if (r < 0) {
@@ -199,36 +128,10 @@ query_screenshot_kwin(struct state *state, struct rect region) {
     sd_bus_message_close_container(m);
     sd_bus_message_append(m, "h", pipefd[1]);
 
-    // sd_bus_message_append("h", ...) duplicates the fd into the message, so we
-    // drop our own write end now. Leaving it open would keep the pipe from ever
-    // reaching EOF once KWin is done.
-    close(pipefd[1]);
-    pipefd[1] = -1;
-
-    // Drain the pipe on a second thread WHILE the blocking call runs. KWin
-    // streams the image through the pipe's small (64 KiB) kernel buffer; if we
-    // only read after the call returned, KWin would block writing a large image
-    // (buffer full, nobody draining) and we would block waiting for a reply it
-    // hasn't sent yet -- a deadlock. The reader touches only `rd` and its fd;
-    // the main thread inspects `rd` only after pthread_join(), so there is no
-    // shared mutable state and no lock is required.
-    rd.fd = pipefd[0];
-    if (pthread_create(&tid, NULL, pipe_reader_thread, &rd) != 0) {
-        LOG_ERR("Failed to start screenshot reader thread.");
-        goto out;
-    }
-    reader_running = true;
-
-    call_rc = sd_bus_call(bus, m, 0, &error, &reply);
-
-    // Release the message so its duplicated write-end fd is closed; together
-    // with KWin closing its end this lets the reader reach EOF.
-    sd_bus_message_unref(m);
-    m = NULL;
-
-    pthread_join(tid, NULL);
-    reader_running = false;
-
+    // KWin replies with the image metadata first and streams the pixels through
+    // the pipe afterwards, so a plain call-then-read is enough -- no concurrent
+    // reader is needed.
+    int call_rc = sd_bus_call(bus, m, 0, &error, &reply);
     if (call_rc < 0) {
         LOG_ERR(
             "CaptureArea failed: %s",
@@ -236,10 +139,13 @@ query_screenshot_kwin(struct state *state, struct rect region) {
         );
         goto out;
     }
-    if (rd.failed) {
-        LOG_ERR("Failed to read the screenshot image.");
-        goto out;
-    }
+
+    // Drop both our own write end and the message's duplicate of it, so that
+    // once KWin finishes writing and closes its end the pipe reaches EOF.
+    close(pipefd[1]);
+    pipefd[1] = -1;
+    sd_bus_message_unref(m);
+    m = NULL;
 
     uint32_t width, height, stride, qformat;
     if (!read_metadata(reply, &width, &height, &stride, &qformat)) {
@@ -266,29 +172,51 @@ query_screenshot_kwin(struct state *state, struct rect region) {
 
     size_t size = (size_t)stride * height;
 
-    // KWin reliably delivers a few bytes less than stride*height (the tail of
-    // the final row). Tolerate a shortfall of up to one row; more than that is a
-    // genuinely truncated image. We then zero-fill the missing tail so OpenCV
-    // never reads uninitialized memory, and ensure the buffer is the full size
-    // so stride-based indexing stays in bounds.
-    if (rd.len + (size_t)stride < size) {
-        LOG_ERR(
-            "Truncated screenshot: got %zu of %zu bytes (%ux%u stride %u).",
-            rd.len, size, width, height, stride
-        );
+    // Allocate the full image zero-filled: KWin reliably delivers slightly
+    // fewer bytes than stride*height (the tail of the final row), so we read
+    // what it sends into a zeroed buffer and the untouched tail stays black --
+    // harmless for detection and safe for stride-based indexing. Reading until
+    // EOF (rather than a fixed count) is essential: waiting for the bytes KWin
+    // never sends would block forever.
+    data = calloc(1, size);
+    if (data == NULL) {
+        LOG_ERR("Failed to allocate screenshot buffer.");
         goto out;
     }
-    if (rd.cap < size) {
-        uint8_t *nd = realloc(rd.data, size);
-        if (nd == NULL) {
-            LOG_ERR("Failed to grow screenshot buffer.");
+
+    size_t off = 0;
+    while (off < size) {
+        struct pollfd pfd = {.fd = pipefd[0], .events = POLLIN};
+        int           pr  = poll(&pfd, 1, KWIN_CAPTURE_READ_TIMEOUT_MS);
+        if (pr < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            LOG_ERR("poll() on screenshot pipe failed: %s", strerror(errno));
             goto out;
         }
-        rd.data = nd;
-        rd.cap  = size;
+        if (pr == 0) {
+            LOG_ERR("Timed out reading the screenshot pipe.");
+            goto out;
+        }
+        ssize_t n = read(pipefd[0], data + off, size - off);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            LOG_ERR("Failed reading screenshot pipe: %s", strerror(errno));
+            goto out;
+        }
+        if (n == 0) {
+            break; // EOF: KWin is done (it writes slightly less than size).
+        }
+        off += (size_t)n;
     }
-    if (rd.len < size) {
-        memset(rd.data + rd.len, 0, size - rd.len);
+
+    // Tolerate the small tail shortfall, but reject a grossly truncated image.
+    if (off < size - size / 16) {
+        LOG_ERR("Truncated screenshot: got %zu of %zu bytes.", off, size);
+        goto out;
     }
 
     result = malloc(sizeof(*result));
@@ -297,22 +225,15 @@ query_screenshot_kwin(struct state *state, struct rect region) {
         goto out;
     }
     result->wl_buffer = NULL; // malloc'd, not SHM
-    result->data      = rd.data;
+    result->data      = data;
     result->format    = wl_format;
     result->width     = (int32_t)width;
     result->height    = (int32_t)height;
     result->stride    = (int32_t)stride;
-    rd.data           = NULL; // ownership transferred to result
+    data              = NULL; // ownership transferred to result
 
 out:
-    // Never return while the reader might still be touching `rd`. In the normal
-    // flow it was already joined above; this only fires on an early error after
-    // the thread was created. The reader ends on its own via EOF or its poll
-    // timeout, so we do not close its fd from under it.
-    if (reader_running) {
-        pthread_join(tid, NULL);
-    }
-    free(rd.data);
+    free(data);
     if (pipefd[0] >= 0) {
         close(pipefd[0]);
     }
