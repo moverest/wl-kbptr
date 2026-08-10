@@ -265,11 +265,30 @@ query_screenshot_kwin(struct state *state, struct rect region) {
     }
 
     size_t size = (size_t)stride * height;
-    if (rd.len < size) {
+
+    // KWin reliably delivers a few bytes less than stride*height (the tail of
+    // the final row). Tolerate a shortfall of up to one row; more than that is a
+    // genuinely truncated image. We then zero-fill the missing tail so OpenCV
+    // never reads uninitialized memory, and ensure the buffer is the full size
+    // so stride-based indexing stays in bounds.
+    if (rd.len + (size_t)stride < size) {
         LOG_ERR(
-            "Short screenshot read: got %zu bytes, expected %zu.", rd.len, size
+            "Truncated screenshot: got %zu of %zu bytes (%ux%u stride %u).",
+            rd.len, size, width, height, stride
         );
         goto out;
+    }
+    if (rd.cap < size) {
+        uint8_t *nd = realloc(rd.data, size);
+        if (nd == NULL) {
+            LOG_ERR("Failed to grow screenshot buffer.");
+            goto out;
+        }
+        rd.data = nd;
+        rd.cap  = size;
+    }
+    if (rd.len < size) {
+        memset(rd.data + rd.len, 0, size - rd.len);
     }
 
     result = malloc(sizeof(*result));
