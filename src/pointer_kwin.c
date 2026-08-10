@@ -79,15 +79,19 @@ static void drain_events(struct kwin_ei_state *s) {
     }
 }
 
-static bool pump_until_resumed(struct kwin_ei_state *s) {
-    while (!s->device_resumed && !s->failed) {
-        // Dispatch first so the initial connection handshake -- and any request
-        // queued during the previous drain (e.g. capability binding) -- is
-        // driven before we block in poll(). Polling first would block waiting
-        // for a response KWin has no reason to send yet, timing out.
+// Drive the libei event loop until *done becomes true, the session fails, or a
+// 2s poll times out. Returns true only if *done was reached without failure.
+//
+// ei_dispatch() runs before poll() on purpose: it sends whatever we queued (the
+// initial handshake, the capability binding, a ping) before we block. Polling
+// first would wait for a response KWin has no reason to send yet, timing out.
+// `done` points at a flag inside `s` that drain_events() flips when the awaited
+// event arrives.
+static bool pump_until(struct kwin_ei_state *s, const bool *done) {
+    while (!*done && !s->failed) {
         ei_dispatch(s->ei);
         drain_events(s);
-        if (s->device_resumed || s->failed) {
+        if (*done || s->failed) {
             break;
         }
         struct pollfd pfd = {.fd = ei_get_fd(s->ei), .events = POLLIN};
@@ -95,7 +99,7 @@ static bool pump_until_resumed(struct kwin_ei_state *s) {
             break; // timeout or error
         }
     }
-    return s->device_resumed && !s->failed;
+    return *done && !s->failed;
 }
 
 // Deterministically flush queued outgoing events before teardown. libei 1.5.0
@@ -117,17 +121,7 @@ static void flush_until_pong(struct kwin_ei_state *s) {
     ei_ping(ping);
     ei_ping_unref(ping);
 
-    while (!s->pong_received && !s->failed) {
-        ei_dispatch(s->ei);
-        drain_events(s);
-        if (s->pong_received || s->failed) {
-            break;
-        }
-        struct pollfd pfd = {.fd = ei_get_fd(s->ei), .events = POLLIN};
-        if (poll(&pfd, 1, 2000) <= 0) {
-            break; // timeout or error: proceed to teardown
-        }
-    }
+    pump_until(s, &s->pong_received);
 }
 
 static struct ei_device *kwin_connect_device(struct kwin_ei_state *s) {
@@ -152,7 +146,7 @@ static struct ei_device *kwin_connect_device(struct kwin_ei_state *s) {
         return NULL;
     }
 
-    if (!pump_until_resumed(s) || s->failed || s->device == NULL) {
+    if (!pump_until(s, &s->device_resumed) || s->failed || s->device == NULL) {
         LOG_ERR("EIS device did not become ready.");
         return NULL;
     }
