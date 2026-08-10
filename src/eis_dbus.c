@@ -5,15 +5,11 @@
 #include "eis_dbus.h"
 
 #include "log.h"
+#include "sdbus.h"
 
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef USE_BASU_SDBUS
-#include <basu/sd-bus.h>
-#else
-#include <systemd/sd-bus.h>
-#endif
 
 // KWin EIS device-type bitmask (keyboard=1, pointer=2, touch=4). We request all
 // and let libei negotiate the pointer/button capabilities it actually binds.

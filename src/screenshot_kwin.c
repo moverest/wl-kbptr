@@ -5,6 +5,7 @@
 #include "screenshot_kwin.h"
 
 #include "log.h"
+#include "sdbus.h"
 #include "state.h"
 #include "utils.h"
 
@@ -12,11 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef USE_BASU_SDBUS
-#include <basu/sd-bus.h>
-#else
-#include <systemd/sd-bus.h>
-#endif
 
 // QImage::Format values returned by ScreenShot2.
 #define QIMAGE_FORMAT_RGB32                4
