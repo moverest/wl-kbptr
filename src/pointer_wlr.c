@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 #include "pointer.h"
-
 #include "state.h"
 #include "wlr-virtual-pointer-unstable-v1-client-protocol.h"
 
@@ -94,7 +93,7 @@ void pointer_wlr_move(
     wl_display_roundtrip(state->wl_display);
 
     if (state->click != CLICK_NONE) {
-        int btn = 271 + click;
+        int btn = click_to_button(click);
 
         zwlr_virtual_pointer_v1_button(
             virt_pointer, 0, btn, WL_POINTER_BUTTON_STATE_PRESSED

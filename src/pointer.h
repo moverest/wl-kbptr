@@ -8,6 +8,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Linux input-event button code (BTN_LEFT/RIGHT/MIDDLE, see
+// linux/input-event-codes.h) for a click selection, shared by both pointer
+// backends. CLICK_NONE maps to BTN_LEFT but callers only use the result when a
+// click is actually requested.
+static inline int click_to_button(enum click click) {
+    switch (click) {
+    case CLICK_RIGHT_BTN:
+        return 0x111; // BTN_RIGHT
+    case CLICK_MIDDLE_BTN:
+        return 0x112; // BTN_MIDDLE
+    default:
+        return 0x110; // BTN_LEFT
+    }
+}
+
 // Public seam used by main.c and the interactive modes. Selects a backend at
 // call time and performs the absolute pointer move, followed by `click` unless
 // that is CLICK_NONE (the bisect/split modes pass CLICK_NONE to track the
@@ -26,7 +41,8 @@ void pointer_wlr_move(
 //
 // The EIS session is opened lazily on the first move and reused for every
 // subsequent move/click; pointer_kwin_destroy() tears it down at exit. A failed
-// connection is remembered so we don't retry (and re-prompt) on every keystroke.
+// connection is remembered so we don't retry (and re-prompt) on every
+// keystroke.
 void pointer_kwin_move(
     struct state *state, uint32_t x, uint32_t y, enum click click
 );

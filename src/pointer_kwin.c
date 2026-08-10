@@ -13,12 +13,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-// Button codes match linux/input-event-codes.h, as required by
-// ei_device_button_button().
-#define EIS_BTN_LEFT   0x110
-#define EIS_BTN_RIGHT  0x111
-#define EIS_BTN_MIDDLE 0x112
-
 #define MAX_REGIONS 16
 
 // Gap injected before the press and again before the release of a click. The
@@ -40,10 +34,10 @@ struct kwin_ei_state {
     bool                  failed;
     // Set once we have tried (and failed) to connect, so we don't re-attempt --
     // and re-prompt the user -- on every keystroke.
-    bool connect_failed;
+    bool                  connect_failed;
     // Monotonically increasing sequence number for ei_device_start_emulating(),
     // as required by libei when the session is reused across multiple moves.
-    uint32_t sequence;
+    uint32_t              sequence;
 };
 
 static void drain_events(struct kwin_ei_state *s) {
@@ -246,9 +240,7 @@ void pointer_kwin_move(
     flush_until_pong(s);
 
     if (click != CLICK_NONE) {
-        uint32_t btn = click == CLICK_RIGHT_BTN    ? EIS_BTN_RIGHT
-                       : click == CLICK_MIDDLE_BTN ? EIS_BTN_MIDDLE
-                                                   : EIS_BTN_LEFT;
+        uint32_t btn = click_to_button(click);
 
         // Separate the press and release in wall-clock time so they are not
         // seen as a zero-duration click (see KWIN_CLICK_GAP_US).
