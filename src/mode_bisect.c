@@ -5,7 +5,7 @@
 #include "state.h"
 #include "utils.h"
 #include "utils_cairo.h"
-#include "utils_wayland.h"
+#include "pointer.h"
 
 #include <math.h>
 #include <stdlib.h>

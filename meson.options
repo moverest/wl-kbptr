@@ -1,1 +1,2 @@
 option('opencv', type: 'feature', value: 'disabled')
+option('kwin', type: 'feature', value: 'disabled')

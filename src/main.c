@@ -4,9 +4,9 @@
 #include "fractional-scale-v1-client-protocol.h"
 #include "log.h"
 #include "mode.h"
+#include "pointer.h"
 #include "state.h"
 #include "surface_buffer.h"
-#include "utils_wayland.h"
 #include "viewporter-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wlr-screencopy-unstable-v1-client-protocol.h"
@@ -652,6 +652,9 @@ static void print_version() {
 #if OPENCV_ENABLED
     printf(" (opencv)");
 #endif
+#if KWIN_ENABLED
+    printf(" (kwin)");
+#endif
     puts("");
 }
 
@@ -695,7 +698,7 @@ int main(int argc, char **argv) {
     };
 
     int    num_cli_configs      = 0;
-    char **cli_configs          = malloc(10 * sizeof(char*));
+    char **cli_configs          = malloc(10 * sizeof(char *));
     int    cli_configs_len      = 10;
     int    option_char          = 0;
     int    option_index         = 0;
@@ -731,7 +734,7 @@ int main(int argc, char **argv) {
             if (num_cli_configs >= cli_configs_len) {
                 cli_configs_len += 10;
                 cli_configs =
-                    realloc(cli_configs, cli_configs_len * sizeof(char*));
+                    realloc(cli_configs, cli_configs_len * sizeof(char *));
             }
             cli_configs[num_cli_configs++] = optarg;
             break;
@@ -820,10 +823,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+#if !KWIN_ENABLED
     if (state.wl_virtual_pointer_mgr == NULL && !only_print) {
         LOG_ERR("Failed to get wlr_virtual_pointer_manager_v1 object.");
         return 1;
     }
+#endif
 
     if (state.xdg_output_manager == NULL) {
         LOG_ERR("Failed to get xdg_output_manager object.");
@@ -934,6 +939,10 @@ int main(int argc, char **argv) {
     if (state.wl_virtual_pointer_mgr != NULL) {
         zwlr_virtual_pointer_manager_v1_destroy(state.wl_virtual_pointer_mgr);
     }
+
+#if KWIN_ENABLED
+    pointer_kwin_destroy(&state);
+#endif
 
     free_seats(&state.seats);
     free_outputs(&state.outputs);

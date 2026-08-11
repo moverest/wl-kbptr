@@ -63,7 +63,15 @@ static void get_area_from_screenshot(
     area.h -= 2;
     area.w -= 2;
 
-    struct scrcpy_buffer    *scrcpy_buffer = query_screenshot(state, area);
+    struct scrcpy_buffer *scrcpy_buffer = query_screenshot(state, area);
+    if (scrcpy_buffer == NULL) {
+        // Capture failed (e.g. the compositor denied the screenshot request).
+        // Leave the area list empty rather than dereferencing a null buffer.
+        ms->areas     = NULL;
+        ms->num_areas = 0;
+        return;
+    }
+
     enum wl_output_transform output_transform =
         state->current_output->transform;
     ms->num_areas = compute_target_from_img_buffer(
