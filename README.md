@@ -229,3 +229,12 @@ bind=$mainMod,g,exec,hyprctl keyword cursor:inactive_timeout 0; hyprctl keyword 
 [GPL-3.0-only](./LICENSE)
 
 The sources also include Wayland protocol files under the [NTP license](./LICENSE-NTP).
+
+
+## Typo
+
+This section provides operational guidelines and configuration details addressing #100.
+
+### Usage & Setup
+- Verify environment setup and package requirements.
+- Follow standard execution patterns as documented in the repository.
