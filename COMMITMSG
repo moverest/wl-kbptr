@@ -1,8 +1,0 @@
-fix: Typo
-
-- src\config.c: exists typo
-- config.example: exists typo
-
-Fixes #100
-
-Signed-off-by: Vedant Madane <6527493+VedantMadane@users.noreply.github.com>
