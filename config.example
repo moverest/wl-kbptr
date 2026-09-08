@@ -3,54 +3,150 @@
 # Othewise the `$XDG_CONFIG_HOME/wl-kbptr/config` file will
 # be loaded if it exists. Below is the default configuration.
 
+## General configuration ##
 [general]
+# A string of exactly 11 characters, each representing a key.
+# The first 8 will be used to select sub-areas in bisect mode.
+# The last 3 will be used as left, right and middle click respectively.
 home_row_keys=
+
+# Modes (tile, bisect, split or float) to use; will be chained.
 modes=tile,bisect
+
+# Status code to exit with when cancelled
 cancellation_status_code=0
 
+
+## Configuration for tile mode ##
 [mode_tile]
+# Label color for selectable regions
 label_color=#fffd
+
+# Label color for selected regions
 label_select_color=#fd0d
+
+# Background color for unselectable regions
 unselectable_bg_color=#2226
+
+# Background color for selectable regions
 selectable_bg_color=#0304
+
+# Border color for selectable regions
 selectable_border_color=#040c
+
+# Font family for labels
 label_font_family=sans-serif
+
+# Font size for labels, specified as `<min> <pct>% <max>`.
+# The resulting font size is a percentage of the region height
+# (specified by <pct>), bounded by <min> and <max>.
 label_font_size=8 50% 100
+
+# Characters to use in labels
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
+
+## Configuration for floating mode ##
 [mode_floating]
+# Source of selectable regions. Possible values:
+# * `detect` -- auto-detect regions with OpenCV
+# * `stdin` -- read region definitions from stdin
 source=stdin
+
+# Label color for selectable regions
 label_color=#fffd
+
+# Label color for selected regions
 label_select_color=#fd0d
+
+# Background color for unselectable regions
 unselectable_bg_color=#2226
+
+# Background color for selectable regions
 selectable_bg_color=#1718
+
+# Border color for selectable regions
 selectable_border_color=#040c
+
+# Font family for labels
 label_font_family=sans-serif
+
+# Font size for labels.
+# See mode_tile.label_font_size for a detailed description.
 label_font_size=12 50% 100
+
+# Characters to use in labels
 label_symbols=abcdefghijklmnopqrstuvwxyz
 
+
+## Configuration for bisect mode ##
 [mode_bisect]
+# Label color for selectable regions
 label_color=#fffd
+
+# Font size for labels. Note that a lower bound is applied internally.
 label_font_size=20
+
+# Font family for labels
 label_font_family=sans-serif
+
+# Spacing between a selectable region and its label.
+# Applicable when the region is smaller than the label.
 label_padding=12
+
+# Pointer size
 pointer_size=20
+
+# Pointer color
 pointer_color=#e22d
+
+# Background color for unselectable regions
 unselectable_bg_color=#2226
+
+# Background color for even areas.
+# Odd/even areas are selectable areas with odd/even indices,
+# when counting row-wise (or column-wise), starting from 0.
 even_area_bg_color=#0304
+
+# Border color for even areas (see `even_area_bg_color`)
 even_area_border_color=#0408
+
+# Background color for odd areas (see `even_area_bg_color`)
 odd_area_bg_color=#0034
+
+# Border color for odd areas (see `even_area_bg_color`)
 odd_area_border_color=#0048
+
+# Border color for selection hisory
 history_border_color=#3339
 
+
+## Configuration for split mode ##
 [mode_split]
+# Pointer size
 pointer_size=20
+
+# Pointer color
 pointer_color=#e22d
+
+# Background color for unselectable area
 bg_color=#2226
+
+# Background color for selectable area
 area_bg_color=#11111188
+
+# Color for vertical split marker
 vertical_color=#8888ffcc
+
+# Color for horizontal split marker
 horizontal_color=#008800cc
+
+# Border color for selection history
 history_border_color=#3339
 
+
+## Configuration for click mode ##
 [mode_click]
+# Mouse button to trigger
 button=left
+
