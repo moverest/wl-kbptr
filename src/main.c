@@ -510,24 +510,25 @@ static void handle_registry_global(
             registry, name, &zxdg_output_manager_v1_interface, 2
         );
 
-    } else if (strcmp(
-                   interface, zwlr_virtual_pointer_manager_v1_interface.name
-               ) == 0) {
+    } else if (
+        strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name) == 0
+    ) {
         state->wl_virtual_pointer_mgr = wl_registry_bind(
             registry, name, &zwlr_virtual_pointer_manager_v1_interface, 2
         );
     } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
         state->wp_viewporter =
             wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
-    } else if (strcmp(
-                   interface, wp_fractional_scale_manager_v1_interface.name
-               ) == 0) {
+    } else if (
+        strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0
+    ) {
         state->fractional_scale_mgr = wl_registry_bind(
             registry, name, &wp_fractional_scale_manager_v1_interface, 1
         );
 #if OPENCV_ENABLED
-    } else if (strcmp(interface, zwlr_screencopy_manager_v1_interface.name) ==
-               0) {
+    } else if (
+        strcmp(interface, zwlr_screencopy_manager_v1_interface.name) == 0
+    ) {
         state->wl_screencopy_manager = wl_registry_bind(
             registry, name, &zwlr_screencopy_manager_v1_interface, 1
         );
@@ -695,7 +696,7 @@ int main(int argc, char **argv) {
     };
 
     int    num_cli_configs      = 0;
-    char **cli_configs          = malloc(10 * sizeof(char*));
+    char **cli_configs          = malloc(10 * sizeof(char *));
     int    cli_configs_len      = 10;
     int    option_char          = 0;
     int    option_index         = 0;
@@ -731,7 +732,7 @@ int main(int argc, char **argv) {
             if (num_cli_configs >= cli_configs_len) {
                 cli_configs_len += 10;
                 cli_configs =
-                    realloc(cli_configs, cli_configs_len * sizeof(char*));
+                    realloc(cli_configs, cli_configs_len * sizeof(char *));
             }
             cli_configs[num_cli_configs++] = optarg;
             break;
