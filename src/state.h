@@ -40,6 +40,7 @@
 #define NO_MODE_ENTERED -1
 
 struct mode_interface;
+struct settings_overlay;
 
 struct tile_mode_state {
     struct rect area;
@@ -138,6 +139,10 @@ struct state {
     void                          *mode_states[MAX_NUM_MODES];
     int                            current_mode;
     enum click                     click;
+    char                          *config_filename;
+    bool                           settings_enabled;
+    bool                           settings_open;
+    struct settings_overlay       *settings;
 };
 
 #endif

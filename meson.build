@@ -59,6 +59,7 @@ sources = [
   'src/utils_wayland.c',
   'src/config.c',
   'src/label.c',
+  'src/settings_overlay.c',
   protos_src,
 ]
 
@@ -87,6 +88,22 @@ label_test_exec = executable(
 )
 
 test('test_label', label_test_exec)
+
+settings_fmt_test_exec = executable(
+  'test_settings_fmt',
+  [
+    'src/test_settings_fmt.c',
+    'src/config.c',
+    'src/settings_overlay.c',
+    'src/label.c',
+    'src/utils.c',
+    'src/utils_cairo.c',
+    protos_src,
+  ],
+  dependencies: dependencies,
+)
+
+test('test_settings_fmt', settings_fmt_test_exec)
 
 install_data(
   'share/wl-kbptr.desktop',

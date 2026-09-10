@@ -108,7 +108,7 @@ int main() {
 
     // Tests with the unicode character not at end-of-string
 
-    label_symbols_t *alt_label_symbols = label_symbols_from_str("abcdéfghi");
+    label_symbols_t   *alt_label_symbols = label_symbols_from_str("abcdéfghi");
     label_selection_t *alt_selection =
         label_selection_new(alt_label_symbols, 100);
     int alt_selection_str_buf_size =

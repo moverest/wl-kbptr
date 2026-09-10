@@ -5,6 +5,7 @@
 
 #include "utils.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 struct general_config {
@@ -99,6 +100,53 @@ struct config_loader {
 };
 
 void print_default_config();
+
+/**
+ * `config_field_kind` is the type of a configuration field's value. It is
+ * derived from the field's parse function, so no per-field annotation is
+ * needed.
+ */
+enum config_field_kind {
+    CONFIG_FIELD_OTHER = 0,
+    CONFIG_FIELD_COLOR,
+    CONFIG_FIELD_DOUBLE,
+    CONFIG_FIELD_REL_FONT_SIZE,
+};
+
+/**
+ * `config_field_ref` points at one field inside a live `struct config`.
+ */
+struct config_field_ref {
+    const char            *section;
+    const char            *name;
+    enum config_field_kind kind;
+    void                  *value;
+};
+
+/**
+ * `config_editable_fields` fills `out` with every field whose value can be
+ * edited numerically (colors and sizes). Returns the number written, which is
+ * never greater than `max`.
+ */
+int config_editable_fields(
+    struct config *config, struct config_field_ref *out, int max
+);
+
+/**
+ * `config_format_field` writes the field's current value in the same syntax
+ * its parse function accepts. Returns the number of characters that would have
+ * been written, as `snprintf` does.
+ */
+int config_format_field(
+    const struct config_field_ref *field, char *out, size_t out_len
+);
+
+/**
+ * `config_resolve_path` writes the path of the configuration file that would
+ * be loaded for `file_name` (which may be NULL to use the default locations)
+ * into `out`. Returns 0 on success and non-zero if no path could be resolved.
+ */
+int config_resolve_path(const char *file_name, char *out, size_t out_len);
 
 /**
  * `config_set_default` sets default values set in the configuration's

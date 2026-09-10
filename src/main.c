@@ -4,6 +4,7 @@
 #include "fractional-scale-v1-client-protocol.h"
 #include "log.h"
 #include "mode.h"
+#include "settings_overlay.h"
 #include "state.h"
 #include "surface_buffer.h"
 #include "utils_wayland.h"
@@ -48,6 +49,7 @@ static void send_frame(struct state *state) {
     cairo_identity_matrix(cairo);
     cairo_scale(cairo, scale_120 / 120.0, scale_120 / 120.0);
     mode_render(state, cairo);
+    settings_overlay_render(state, cairo);
 
     wl_surface_set_buffer_scale(state->wl_surface, 1);
 
@@ -257,6 +259,19 @@ static void handle_keyboard_key(
     xkb_keysym_to_utf8(key_sym, text, sizeof(text));
 
     if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+        if (seat->state->settings_open) {
+            if (settings_overlay_handle_key(seat->state, key_sym, text)) {
+                request_frame(seat->state);
+            }
+            return;
+        }
+
+        if (seat->state->settings_enabled && key_sym == XKB_KEY_F1) {
+            seat->state->settings_open = true;
+            request_frame(seat->state);
+            return;
+        }
+
         bool redraw = mode_handle_key(seat->state, key_sym, text);
         if (has_last_mode_returned(seat->state)) {
             seat->state->running = false;
@@ -645,6 +660,7 @@ static void print_usage() {
     puts(" -o, --option        set configuration option");
     puts(" -O, --output        specify display output to use");
     puts(" -p, --only-print    only print, don't move the cursor or click");
+    puts(" -S, --settings      open the settings overlay (F1 to reopen)");
 }
 
 static void print_version() {
@@ -691,6 +707,7 @@ int main(int argc, char **argv) {
         {"config", required_argument, 0, 'c'},
         {"output", required_argument, 0, 'O'},
         {"only-print", no_argument, 0, 'p'},
+        {"settings", no_argument, 0, 'S'},
         {NULL, 0, NULL, 0}
     };
 
@@ -699,11 +716,10 @@ int main(int argc, char **argv) {
     int    cli_configs_len      = 10;
     int    option_char          = 0;
     int    option_index         = 0;
-    char  *config_filename      = NULL;
     char  *selected_output_name = NULL;
     bool   only_print           = false;
     while ((option_char = getopt_long(
-                argc, argv, "hvr:o:c:O:Rp", long_options, &option_index
+                argc, argv, "hvr:o:c:O:RpS", long_options, &option_index
             )) != -1) {
         switch (option_char) {
         case 'h':
@@ -737,7 +753,7 @@ int main(int argc, char **argv) {
             break;
 
         case 'c':
-            config_filename = strdup(optarg);
+            state.config_filename = strdup(optarg);
             break;
 
         case 'H':
@@ -753,6 +769,11 @@ int main(int argc, char **argv) {
             only_print = true;
             break;
 
+        case 'S':
+            state.settings_enabled = true;
+            state.settings_open    = true;
+            break;
+
         default:
             LOG_ERR("Unknown argument.");
             config_free_values(&state.config);
@@ -760,14 +781,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    int err = config_loader_load_file(&config_loader, config_filename);
+    // `state.config_filename` is kept until exit so the settings overlay can
+    // save back to the same file.
+    int err = config_loader_load_file(&config_loader, state.config_filename);
     if (err) {
         LOG_ERR("Failed to read configuration file.");
         return 1;
-    }
-    if (config_filename != NULL) {
-        free(config_filename);
-        config_filename = NULL;
     }
 
     for (int i = 0; i < num_cli_configs; i++) {
@@ -784,6 +803,11 @@ int main(int argc, char **argv) {
 
     if (load_modes(&state, state.config.general.modes) != 0) {
         LOG_ERR("Could not load modes.");
+        return 1;
+    }
+
+    if (state.settings_enabled && settings_overlay_init(&state) != 0) {
+        LOG_ERR("Could not initialize the settings overlay.");
         return 1;
     }
 
@@ -959,8 +983,10 @@ int main(int argc, char **argv) {
 
     wl_display_disconnect(state.wl_display);
 
+    settings_overlay_free(&state);
     config_free_values(&state.config);
     free_mode_states(&state);
+    free(state.config_filename);
 
 #if DEBUG
     cairo_debug_reset_static_data();

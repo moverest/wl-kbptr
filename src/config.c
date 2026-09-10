@@ -6,6 +6,7 @@
 #include "state.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -438,6 +439,84 @@ void print_default_config() {
     }
 }
 
+// The field's parse function already tells us how its value is stored, so the
+// kind is derived from it rather than duplicated in `section_defs`.
+static enum config_field_kind field_def_kind(struct field_def *field_def) {
+    if (field_def->parse == parse_color) {
+        return CONFIG_FIELD_COLOR;
+    }
+
+    if (field_def->parse == parse_double) {
+        return CONFIG_FIELD_DOUBLE;
+    }
+
+    if (field_def->parse == parse_relative_font_size) {
+        return CONFIG_FIELD_REL_FONT_SIZE;
+    }
+
+    return CONFIG_FIELD_OTHER;
+}
+
+int config_editable_fields(
+    struct config *config, struct config_field_ref *out, int max
+) {
+    int num = 0;
+
+    for (int i = 0; i < sizeof(section_defs) / sizeof(section_defs[0]); i++) {
+        struct section_def *section_def = &section_defs[i];
+
+        for (struct field_def **field_def_ptr = section_def->fields;
+             *field_def_ptr != NULL; field_def_ptr++) {
+            struct field_def *field_def = *field_def_ptr;
+
+            enum config_field_kind kind = field_def_kind(field_def);
+            if (kind == CONFIG_FIELD_OTHER) {
+                continue;
+            }
+
+            if (num >= max) {
+                LOG_WARN("Too many editable configuration fields.");
+                return num;
+            }
+
+            out[num++] = (struct config_field_ref){
+                .section = section_def->name,
+                .name    = field_def->name,
+                .kind    = kind,
+                .value =
+                    ((void *)config) + section_def->offset + field_def->offset,
+            };
+        }
+    }
+
+    return num;
+}
+
+int config_format_field(
+    const struct config_field_ref *field, char *out, size_t out_len
+) {
+    switch (field->kind) {
+    case CONFIG_FIELD_COLOR:
+        return snprintf(out, out_len, "#%08x", *(uint32_t *)field->value);
+
+    case CONFIG_FIELD_DOUBLE:
+        return snprintf(out, out_len, "%g", *(double *)field->value);
+
+    case CONFIG_FIELD_REL_FONT_SIZE:;
+        struct relative_font_size *rfs = field->value;
+        return snprintf(
+            out, out_len, "%g %g%% %g", rfs->min, rfs->proportion * 100.,
+            rfs->max
+        );
+
+    default:
+        if (out_len > 0) {
+            out[0] = '\0';
+        }
+        return 0;
+    }
+}
+
 void config_loader_init(struct config_loader *loader, struct config *config) {
     loader->config           = config;
     loader->curr_section_def = &section_defs[0];
@@ -577,18 +656,14 @@ void config_free_values(struct config *config) {
 
 static const char *XDG_PATH_FMT = "%s/wl-kbptr/config";
 
-static FILE *open_config_file(char *file_name) {
-    FILE *f = NULL;
+// `truncated` reports whether an `snprintf` call failed or ran out of room.
+static int truncated(int written, size_t out_len) {
+    return written < 0 || (size_t)written >= out_len;
+}
 
+int config_resolve_path(const char *file_name, char *out, size_t out_len) {
     if (file_name != NULL) {
-        f = fopen(file_name, "r");
-        if (f == NULL) {
-            LOG_ERR("Could not open config file '%s'", file_name);
-            return NULL;
-        }
-
-        LOG_INFO("Loading config file '%s'", file_name);
-        return f;
+        return truncated(snprintf(out, out_len, "%s", file_name), out_len);
     }
 
     char       *xdg_config_home     = getenv("XDG_CONFIG_HOME");
@@ -599,27 +674,42 @@ static FILE *open_config_file(char *file_name) {
         config_home_buf_len = strlen(home) + sizeof("/.config");
     }
 
-    char config_home_buf[config_home_buf_len];
+    char config_home_buf[config_home_buf_len > 0 ? config_home_buf_len : 1];
 
     if (xdg_config_home == NULL && home != NULL) {
         snprintf(config_home_buf, config_home_buf_len, "%s/.config", home);
         xdg_config_home = config_home_buf;
     }
 
-    if (xdg_config_home != NULL) {
-        int  path_len = snprintf(NULL, 0, XDG_PATH_FMT, xdg_config_home) + 1;
-        char file_path[path_len];
-        snprintf(file_path, path_len, XDG_PATH_FMT, xdg_config_home);
-
-        f = fopen(file_path, "r");
-        if (f == NULL) {
-            LOG_WARN("Could not open config file '%s'", file_path);
-            return NULL;
-        }
-
-        LOG_INFO("Loading config file '%s'", file_path);
+    if (xdg_config_home == NULL) {
+        return 1;
     }
 
+    return truncated(
+        snprintf(out, out_len, XDG_PATH_FMT, xdg_config_home), out_len
+    );
+}
+
+static FILE *open_config_file(char *file_name) {
+    char file_path[PATH_MAX];
+    if (config_resolve_path(file_name, file_path, sizeof(file_path)) != 0) {
+        if (file_name != NULL) {
+            LOG_ERR("Could not resolve config file path.");
+        }
+        return NULL;
+    }
+
+    FILE *f = fopen(file_path, "r");
+    if (f == NULL) {
+        if (file_name != NULL) {
+            LOG_ERR("Could not open config file '%s'", file_path);
+        } else {
+            LOG_WARN("Could not open config file '%s'", file_path);
+        }
+        return NULL;
+    }
+
+    LOG_INFO("Loading config file '%s'", file_path);
     return f;
 }
 
