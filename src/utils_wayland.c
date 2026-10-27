@@ -83,9 +83,12 @@ void move_pointer(
     uint32_t output_width  = state->current_output->width;
     uint32_t output_height = state->current_output->height;
 
-    _apply_transform(
-        &x, &y, &output_width, &output_height, state->current_output->transform
-    );
+    if (state->config.general.transform_pointer) {
+        _apply_transform(
+            &x, &y, &output_width, &output_height,
+            state->current_output->transform
+        );
+    }
 
     zwlr_virtual_pointer_v1_motion_absolute(
         virt_pointer, 0, x, y, output_width, output_height
@@ -133,10 +136,14 @@ void drag_pointer(
     uint32_t output_height = state->current_output->height;
 
     uint32_t sx = start_x, sy = start_y, sw = output_width, sh = output_height;
-    _apply_transform(&sx, &sy, &sw, &sh, state->current_output->transform);
+    if (state->config.general.transform_pointer) {
+        _apply_transform(&sx, &sy, &sw, &sh, state->current_output->transform);
+    }
 
     uint32_t ex = end_x, ey = end_y, ew = output_width, eh = output_height;
-    _apply_transform(&ex, &ey, &ew, &eh, state->current_output->transform);
+    if (state->config.general.transform_pointer) {
+        _apply_transform(&ex, &ey, &ew, &eh, state->current_output->transform);
+    }
 
     zwlr_virtual_pointer_v1_motion_absolute(virt_pointer, 0, sx, sy, sw, sh);
     zwlr_virtual_pointer_v1_frame(virt_pointer);

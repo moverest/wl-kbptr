@@ -81,6 +81,19 @@ static int parse_color(void *dest, char *value) {
     return 0;
 }
 
+static int parse_bool(void *dest, char *value) {
+    if (strcmp(value, "true") == 0) {
+        *((bool *)dest) = true;
+    } else if (strcmp(value, "false") == 0) {
+        *((bool *)dest) = false;
+    } else {
+        LOG_ERR("Value should be true or false.");
+        return 1;
+    }
+
+    return 0;
+}
+
 static int parse_double(void *dest, char *value) {
     *((double *)dest) = atof(value);
     // TODO: handle errors better.
@@ -398,6 +411,13 @@ static struct section_def section_defs[] = {
         G_FIELD(
             cancellation_status_code, "0", parse_uint8, noop,
             "Status code to exit with when cancelled"
+        ),
+        G_FIELD(
+            transform_pointer, "true", parse_bool, noop,
+            "Whether to apply the output transform to the pointer position.\n"
+            "Compositors differ on whether virtual pointer coordinates are\n"
+            "pre- or post-transform. Set to false if the pointer lands in the\n"
+            "wrong place on rotated or flipped outputs."
         )
     ),
     SECTION(
