@@ -16,6 +16,11 @@ modes=tile,bisect
 # Status code to exit with when cancelled
 cancellation_status_code=0
 
+# Where to read keys from (wayland or evdev).
+# `wayland` takes the keyboard focus, which makes the compositor close open popups and menus.
+# `evdev` grabs the keyboards from /dev/input instead and leaves the focus untouched. Requires read access to the devices, e.g. being in the `input` group, otherwise falls back to `wayland`.
+key_source=wayland
+
 
 ## Configuration for tile mode ##
 [mode_tile]
