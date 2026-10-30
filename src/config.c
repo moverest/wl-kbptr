@@ -276,6 +276,22 @@ static int parse_floating_mode_source_value(void *dest, char *value) {
     return 0;
 }
 
+static int parse_key_source(void *dest, char *value) {
+    enum key_source *out = dest;
+    if (strcmp(value, "wayland") == 0) {
+        *out = KEY_SOURCE_WAYLAND;
+    } else if (strcmp(value, "evdev") == 0) {
+        *out = KEY_SOURCE_EVDEV;
+    } else {
+        LOG_ERR(
+            "Invalid key source '%s'. Should be 'wayland' or 'evdev'.", value
+        );
+        return 1;
+    }
+
+    return 0;
+}
+
 static int parse_click(void *dest, char *value) {
     enum click *out = dest;
     if (strcmp(value, "none") == 0) {
@@ -398,6 +414,15 @@ static struct section_def section_defs[] = {
         G_FIELD(
             cancellation_status_code, "0", parse_uint8, noop,
             "Status code to exit with when cancelled"
+        ),
+        G_FIELD(
+            key_source, "wayland", parse_key_source, noop,
+            "Where to read keys from (wayland or evdev).\n"
+            "`wayland` takes the keyboard focus, which makes the compositor "
+            "close open popups and menus.\n"
+            "`evdev` grabs the keyboards from /dev/input instead and leaves "
+            "the focus untouched. Requires read access to the devices, e.g. "
+            "being in the `input` group, otherwise falls back to `wayland`."
         )
     ),
     SECTION(

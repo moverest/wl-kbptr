@@ -14,9 +14,16 @@
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 #include <cairo/cairo.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
+#include <linux/input.h>
+#include <poll.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <wayland-client-protocol.h>
@@ -245,25 +252,218 @@ static void handle_keyboard_keymap(
     seat->xkb_state = xkb_state_new(seat->xkb_keymap);
 }
 
+static void handle_key(struct state *state, xkb_keysym_t key_sym) {
+    char text[64];
+    xkb_keysym_to_utf8(key_sym, text, sizeof(text));
+
+    bool redraw = mode_handle_key(state, key_sym, text);
+    if (has_last_mode_returned(state)) {
+        state->running = false;
+    } else if (redraw) {
+        request_frame(state);
+    }
+}
+
 static void handle_keyboard_key(
     void *data, struct wl_keyboard *keyboard, uint32_t serial, uint32_t time,
     uint32_t key, uint32_t key_state
 ) {
-    struct seat        *seat = data;
-    char                text[64];
+    struct seat        *seat     = data;
     const xkb_keycode_t key_code = key + 8;
     const xkb_keysym_t  key_sym =
         xkb_state_key_get_one_sym(seat->xkb_state, key_code);
-    xkb_keysym_to_utf8(key_sym, text, sizeof(text));
 
     if (key_state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        bool redraw = mode_handle_key(seat->state, key_sym, text);
-        if (has_last_mode_returned(seat->state)) {
-            seat->state->running = false;
-        } else if (redraw) {
-            request_frame(seat->state);
+        handle_key(seat->state, key_sym);
+    }
+}
+
+#define MAX_EVDEV_KEYBOARDS 16
+#define EVDEV_GRAB_TIMEOUT  30 // seconds
+#define BITS_LEN(n)         ((n) / 8 + 1)
+#define TEST_BIT(bits, n)   ((bits)[(n) / 8] & (1 << ((n) % 8)))
+
+// Opens every input device that looks like a keyboard. Returns the number of
+// devices opened.
+static int open_evdev_keyboards(int *fds) {
+    DIR *dir = opendir("/dev/input");
+    if (dir == NULL) {
+        LOG_ERR("Could not open /dev/input.");
+        return 0;
+    }
+
+    int            num_fds = 0;
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL && num_fds < MAX_EVDEV_KEYBOARDS) {
+        if (strncmp(entry->d_name, "event", 5) != 0) {
+            continue;
+        }
+
+        char path[300];
+        snprintf(path, sizeof(path), "/dev/input/%s", entry->d_name);
+        int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+        if (fd < 0) {
+            continue;
+        }
+
+        unsigned char key_bits[BITS_LEN(KEY_MAX)] = {0};
+        if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits) < 0 ||
+            !TEST_BIT(key_bits, KEY_A) || !TEST_BIT(key_bits, KEY_Z)) {
+            close(fd);
+            continue;
+        }
+
+        fds[num_fds++] = fd;
+    }
+
+    closedir(dir);
+    return num_fds;
+}
+
+static bool is_any_evdev_key_down(int *fds, int num_fds) {
+    for (int i = 0; i < num_fds; i++) {
+        unsigned char key_bits[BITS_LEN(KEY_MAX)] = {0};
+        if (ioctl(fds[i], EVIOCGKEY(sizeof(key_bits)), key_bits) < 0) {
+            continue;
+        }
+
+        for (int j = 0; j < sizeof(key_bits); j++) {
+            if (key_bits[j]) {
+                return true;
+            }
         }
     }
+
+    return false;
+}
+
+// Grabs the keyboards so their keys only reach us. The keys still held down
+// (e.g. the modifiers of the binding that started us) are waited on first,
+// otherwise the compositor would never see them being released.
+static void grab_evdev_keyboards(int *fds, int num_fds) {
+    for (int i = 0; i < 200 && is_any_evdev_key_down(fds, num_fds); i++) {
+        usleep(10000);
+    }
+
+    for (int i = 0; i < num_fds; i++) {
+        if (ioctl(fds[i], EVIOCGRAB, 1) < 0) {
+            LOG_WARN("Could not grab input device.");
+        }
+
+        // Drop events from before the grab.
+        struct input_event ev;
+        while (read(fds[i], &ev, sizeof(ev)) == sizeof(ev)) {}
+    }
+}
+
+static void
+handle_evdev_input(struct state *state, int fd, struct xkb_state *xkb_state) {
+    struct input_event ev;
+    while (state->running && read(fd, &ev, sizeof(ev)) == sizeof(ev)) {
+        if (ev.type != EV_KEY) {
+            continue;
+        }
+
+        const xkb_keycode_t key_code = ev.code + 8;
+        if (ev.value == 1) {
+            xkb_keysym_t key_sym =
+                xkb_state_key_get_one_sym(xkb_state, key_code);
+            xkb_state_update_key(xkb_state, key_code, XKB_KEY_DOWN);
+            alarm(EVDEV_GRAB_TIMEOUT);
+            handle_key(state, key_sym);
+        } else if (ev.value == 0) {
+            xkb_state_update_key(xkb_state, key_code, XKB_KEY_UP);
+        }
+    }
+}
+
+// Same as calling `wl_display_dispatch` in a loop, but keys are read from the
+// grabbed input devices instead of the Wayland keyboard.
+static void
+run_with_evdev(struct state *state, int *evdev_fds, int num_evdev_fds) {
+    struct xkb_keymap *keymap = NULL;
+    struct seat       *seat;
+    wl_list_for_each (seat, &state->seats, link) {
+        if (seat->xkb_keymap != NULL) {
+            keymap = seat->xkb_keymap;
+            break;
+        }
+    }
+
+    if (keymap == NULL) {
+        LOG_ERR("No keymap received from the compositor.");
+        for (int i = 0; i < num_evdev_fds; i++) {
+            close(evdev_fds[i]);
+        }
+        return;
+    }
+
+    struct xkb_state *xkb_state = xkb_state_new(keymap);
+
+    // Draw the overlay before waiting on the keys to be released.
+    wl_display_roundtrip(state->wl_display);
+    grab_evdev_keyboards(evdev_fds, num_evdev_fds);
+
+    // While grabbed, no key reaches the compositor, so a stuck process would
+    // leave the user without a keyboard. SIGALRM kills us after a while
+    // without key presses, which releases the grab.
+    alarm(EVDEV_GRAB_TIMEOUT);
+
+    struct pollfd fds[1 + MAX_EVDEV_KEYBOARDS];
+    fds[0] = (struct pollfd){
+        .fd     = wl_display_get_fd(state->wl_display),
+        .events = POLLIN,
+    };
+    for (int i = 0; i < num_evdev_fds; i++) {
+        fds[i + 1] = (struct pollfd){.fd = evdev_fds[i], .events = POLLIN};
+    }
+
+    while (state->running) {
+        while (wl_display_prepare_read(state->wl_display) != 0) {
+            if (wl_display_dispatch_pending(state->wl_display) < 0) {
+                goto done;
+            }
+        }
+        wl_display_flush(state->wl_display);
+
+        if (poll(fds, 1 + num_evdev_fds, -1) < 0) {
+            wl_display_cancel_read(state->wl_display);
+            if (errno == EINTR) {
+                continue;
+            }
+            LOG_ERR("poll failed.");
+            goto done;
+        }
+
+        if (fds[0].revents & (POLLIN | POLLERR | POLLHUP)) {
+            if (wl_display_read_events(state->wl_display) < 0) {
+                goto done;
+            }
+        } else {
+            wl_display_cancel_read(state->wl_display);
+        }
+
+        if (wl_display_dispatch_pending(state->wl_display) < 0) {
+            goto done;
+        }
+
+        for (int i = 1; i <= num_evdev_fds; i++) {
+            if (fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+                // Device unplugged.
+                fds[i].fd = -1;
+            } else if (fds[i].revents & POLLIN) {
+                handle_evdev_input(state, fds[i].fd, xkb_state);
+            }
+        }
+    }
+
+done:
+    alarm(0);
+    // Closing the devices releases the grab.
+    for (int i = 0; i < num_evdev_fds; i++) {
+        close(evdev_fds[i]);
+    }
+    xkb_state_unref(xkb_state);
 }
 
 static void handle_keyboard_modifiers(
@@ -899,8 +1099,23 @@ int main(int argc, char **argv) {
                                     ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
                                     ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM
     );
+    int evdev_fds[MAX_EVDEV_KEYBOARDS];
+    int num_evdev_fds = 0;
+    if (state.config.general.key_source == KEY_SOURCE_EVDEV) {
+        num_evdev_fds = open_evdev_keyboards(evdev_fds);
+        if (num_evdev_fds == 0) {
+            LOG_WARN(
+                "Could not open any keyboard in /dev/input, falling back to "
+                "the Wayland keyboard. Is the user in the `input` group?"
+            );
+        }
+    }
+
+    // Taking the keyboard focus closes popups and menus, so don't when keys are
+    // read from evdev.
+    bool use_evdev = num_evdev_fds > 0;
     zwlr_layer_surface_v1_set_keyboard_interactivity(
-        state.wl_layer_surface, true
+        state.wl_layer_surface, !use_evdev
     );
 
     struct wp_fractional_scale_v1 *fractional_scale = NULL;
@@ -922,7 +1137,11 @@ int main(int argc, char **argv) {
     wl_surface_set_input_region(state.wl_surface, wl_region);
 
     wl_surface_commit(state.wl_surface);
-    while (state.running && wl_display_dispatch(state.wl_display)) {}
+    if (use_evdev) {
+        run_with_evdev(&state, evdev_fds, num_evdev_fds);
+    } else {
+        while (state.running && wl_display_dispatch(state.wl_display)) {}
+    }
 
     wp_viewport_destroy(state.wp_viewport);
 

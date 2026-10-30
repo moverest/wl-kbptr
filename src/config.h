@@ -7,10 +7,16 @@
 
 #include <stdint.h>
 
+enum key_source {
+    KEY_SOURCE_WAYLAND,
+    KEY_SOURCE_EVDEV,
+};
+
 struct general_config {
-    char  **home_row_keys;
-    char   *modes;
-    uint8_t cancellation_status_code;
+    char          **home_row_keys;
+    char           *modes;
+    uint8_t         cancellation_status_code;
+    enum key_source key_source;
 };
 
 struct relative_font_size {
